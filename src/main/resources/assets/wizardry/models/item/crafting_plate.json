@@ -1,8 +1,7 @@
 {
-  "__comment": "Model generated using MrCrayfish's Model Creator (http://mrcrayfish.com/modelcreator/)",
   "textures":  {
-    "0":        "wizardry:blocks/crafting_plate",
-    "particle": "wizardry:blocks/crafting_plate"
+    "0":        "wizardry:models/blocks/crafting_plate",
+    "particle": "wizardry:models/blocks/crafting_plate"
   },
   "elements":  [
     {

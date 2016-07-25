@@ -1,0 +1,7 @@
+{
+  "parent":   "item/generated",
+  "textures": {
+    "layer0": "wizardry:items/ring_gold",
+    "layer1": "wizardry:items/pearl_ring"
+  }
+}

@@ -8,10 +8,10 @@ tile.mana.name=Mana
 item.physics_book.name=Physics Book
 item.ring.name=Ring
 item.devil_dust.name=Devil Dust
-item.mana_pearl.name=Mana Pearl
-item.glass_pearl.name=Glass Pearl
-item.nacre_pearl.name=Nacre Pearl
-item.quartz_pearl.name=Quartz Pearl
+item.pearl_mana.name=Mana Pearl
+item.pearl_glass.name=Glass Pearl
+item.pearl_nacre.name=Nacre Pearl
+item.pearl_quartz.name=Quartz Pearl
 
 gui.physicsbook.defaulttitle=Physics Book
 
