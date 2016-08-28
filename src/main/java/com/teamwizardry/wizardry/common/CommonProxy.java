@@ -17,6 +17,7 @@ import com.teamwizardry.wizardry.common.core.EventHandler;
 import com.teamwizardry.wizardry.common.fluid.Fluids;
 import com.teamwizardry.wizardry.common.network.WizardryPacketHandler;
 import com.teamwizardry.wizardry.common.world.GenHandler;
+import com.teamwizardry.wizardry.common.world.UnderworldProviderEventHandler;
 import com.teamwizardry.wizardry.common.world.WorldProviderUnderWorld;
 import com.teamwizardry.wizardry.init.*;
 import net.minecraft.util.math.Vec3d;
@@ -59,7 +60,7 @@ public class CommonProxy {
         MinecraftForge.EVENT_BUS.register(new EventHandler());
         MinecraftForge.EVENT_BUS.register(new AchievementEvents());
         MinecraftForge.EVENT_BUS.register(new ModCapabilities());
-
+        UnderworldProviderEventHandler.INSTANCE.getClass();
     }
 
     public void init(FMLInitializationEvent event) {
