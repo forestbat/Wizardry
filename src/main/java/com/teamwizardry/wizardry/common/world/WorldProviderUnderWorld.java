@@ -100,9 +100,10 @@ public class WorldProviderUnderWorld extends WorldProvider {
     }
     
     public void wrapChunk(Chunk chunk) {
-        if(chunk.getWorld() != this.worldObj)
+        if(chunk.getWorld().provider.getDimension() != getDimension())
             return;
-        IChunkProvider provider = UnderworldMethodHandles.getProvider(worldObj);
+	    
+        IChunkProvider provider = UnderworldMethodHandles.getProvider(chunk.getWorld());
         Long2ObjectMap<Chunk> mapping = null;
         if(provider instanceof ChunkProviderClient) {
             mapping = UnderworldMethodHandles.getChunkMappingClient((ChunkProviderClient) provider);
@@ -243,7 +244,6 @@ public class WorldProviderUnderWorld extends WorldProvider {
         public IBlockState setBlockState(BlockPos pos, IBlockState state)
         {
             int[] wrap_precipitationHeightMap = UnderworldMethodHandles.chunkGetPrecipitationHeightMap(toWrap);
-            int[] wrap_heightMap = UnderworldMethodHandles.chunkGetHeightMap(toWrap);
             ExtendedBlockStorage[] wrap_storageArrays = toWrap.getBlockStorageArray();
             
             int chunkX = pos.getX() & 15;
@@ -256,7 +256,6 @@ public class WorldProviderUnderWorld extends WorldProvider {
                 wrap_precipitationHeightMap[columnIndex] = -999;
             }
         
-            int currentHeight = wrap_heightMap[columnIndex];
             IBlockState oldState = this.getBlockState(pos);
         
             if (oldState == state)
@@ -267,9 +266,7 @@ public class WorldProviderUnderWorld extends WorldProvider {
             {
                 Block newBlock = state.getBlock();
                 Block oldBlock = oldState.getBlock();
-                int oldOpacity = oldState.getLightOpacity(toWrap.getWorld(), pos); // Relocate old light value lookup here, so that it is called before TE is removed.
                 ExtendedBlockStorage storage = wrap_storageArrays[chunkY >> 4];
-                boolean createdNewTopStorage = false;
             
                 if (storage == NULL_BLOCK_STORAGE)
                 {
@@ -280,7 +277,6 @@ public class WorldProviderUnderWorld extends WorldProvider {
                 
                     storage = new ExtendedBlockStorage(chunkY >> 4 << 4, !toWrap.getWorld().provider.getHasNoSky());
                     wrap_storageArrays[chunkY >> 4] = storage;
-                    createdNewTopStorage = chunkY >= currentHeight;
                 }
             
                 storage.set(chunkX, chunkY & 15, chunkZ, state);
@@ -308,32 +304,6 @@ public class WorldProviderUnderWorld extends WorldProvider {
                 }
                 else
                 {
-                    if (createdNewTopStorage)
-                    {
-                        this.generateSkylightMap();
-                    }
-                    else
-                    {
-                        int opacity = state.getLightOpacity(toWrap.getWorld(), pos);
-                    
-                        if (opacity > 0)
-                        {
-                            if (chunkY >= currentHeight)
-                            {
-                                this.relightBlock(chunkX, chunkY + 1, chunkZ);
-                            }
-                        }
-                        else if (chunkY == currentHeight - 1)
-                        {
-                            this.relightBlock(chunkX, chunkY, chunkZ);
-                        }
-                    
-                        if (opacity != oldOpacity && (opacity < oldOpacity || this.getLightFor(EnumSkyBlock.SKY, pos) > 0 || this.getLightFor(EnumSkyBlock.BLOCK, pos) > 0))
-                        {
-                            UnderworldMethodHandles.chunkPropagateSkylightOcclusion(toWrap, chunkX, chunkZ);
-                        }
-                    }
-                
                     // If capturing blocks, only run block physics for TE's. Non-TE's are handled in ForgeHooks.onPlaceItemIntoWorld
                     if (!toWrap.getWorld().isRemote && oldBlock != newBlock && (!toWrap.getWorld().captureBlockSnapshots || newBlock.hasTileEntity(state)))
                     {
@@ -370,113 +340,7 @@ public class WorldProviderUnderWorld extends WorldProvider {
         
         private void relightBlock(int x, int y, int z)
         {
-            int[] wrap_heightMap = UnderworldMethodHandles.chunkGetHeightMap(toWrap);
-            ExtendedBlockStorage[] wrap_storageArrays = toWrap.getBlockStorageArray();
-    
-            int currentHeight = wrap_heightMap[z << 4 | x] & 255;
-            int topOpaqueBlock = currentHeight;
-        
-            if (y > currentHeight)
-            {
-                topOpaqueBlock = y;
-            }
-        
-            while (topOpaqueBlock > 0 && this.getBlockLightOpacity(x, topOpaqueBlock - 1, z) == 0)
-            {
-                --topOpaqueBlock;
-            }
-        
-            if (topOpaqueBlock != currentHeight)
-            {
-                toWrap.getWorld().markBlocksDirtyVertical(x + toWrap.xPosition * 16, z + toWrap.zPosition * 16, topOpaqueBlock, currentHeight);
-                wrap_heightMap[z << 4 | x] = topOpaqueBlock;
-                int worldX = this.xPosition * 16 + x;
-                int worldZ = this.zPosition * 16 + z;
             
-                if (!toWrap.getWorld().provider.getHasNoSky())
-                {
-                    if (topOpaqueBlock < currentHeight)
-                    {
-                        for (int inbetweenY = topOpaqueBlock; inbetweenY < currentHeight; ++inbetweenY)
-                        {
-                            ExtendedBlockStorage storage = wrap_storageArrays[inbetweenY >> 4];
-                        
-                            if (storage != NULL_BLOCK_STORAGE)
-                            {
-                                storage.setExtSkylightValue(x, inbetweenY & 15, z, 15);
-                                toWrap.getWorld().notifyLightSet(new BlockPos((toWrap.xPosition << 4) + x, inbetweenY, (toWrap.zPosition << 4) + z));
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (int inbetweenY = currentHeight; inbetweenY < topOpaqueBlock; ++inbetweenY)
-                        {
-                            ExtendedBlockStorage storage = wrap_storageArrays[inbetweenY >> 4];
-                        
-                            if (storage != NULL_BLOCK_STORAGE)
-                            {
-                                storage.setExtSkylightValue(x, inbetweenY & 15, z, 0);
-                                toWrap.getWorld().notifyLightSet(new BlockPos((toWrap.xPosition << 4) + x, inbetweenY, (toWrap.zPosition << 4) + z));
-                            }
-                        }
-                    }
-                
-                    int skyLight = 15;
-                
-                    while (topOpaqueBlock > 0 && skyLight > 0)
-                    {
-                        --topOpaqueBlock;
-                        int opacity = this.getBlockLightOpacity(x, topOpaqueBlock, z);
-                    
-                        if (opacity == 0)
-                        {
-                            opacity = 1;
-                        }
-                    
-                        skyLight -= opacity;
-                    
-                        if (skyLight < 0)
-                        {
-                            skyLight = 0;
-                        }
-                    
-                        ExtendedBlockStorage storage = wrap_storageArrays[topOpaqueBlock >> 4];
-                    
-                        if (storage != NULL_BLOCK_STORAGE)
-                        {
-                            storage.setExtSkylightValue(x, topOpaqueBlock & 15, z, skyLight);
-                        }
-                    }
-                }
-            
-                int afterHeight = wrap_heightMap[z << 4 | x];
-                int lightUpdateHeightMin = currentHeight;
-                int lightUpdateHeightMax = afterHeight;
-            
-                if (afterHeight < currentHeight)
-                {
-                    lightUpdateHeightMin = afterHeight;
-                    lightUpdateHeightMax = currentHeight;
-                }
-            
-                if (afterHeight < UnderworldMethodHandles.chunkGetHeightMapMinimum(toWrap))
-                {
-                    UnderworldMethodHandles.chunkSetHeightMapMinimum(toWrap, afterHeight);
-                }
-            
-                if (!toWrap.getWorld().provider.getHasNoSky())
-                {
-                    for (EnumFacing enumfacing : EnumFacing.Plane.HORIZONTAL)
-                    {
-                        this.updateSkylightNeighborHeight(worldX + enumfacing.getFrontOffsetX(), worldZ + enumfacing.getFrontOffsetZ(), lightUpdateHeightMin, lightUpdateHeightMax);
-                    }
-                
-                    this.updateSkylightNeighborHeight(worldX, worldZ, lightUpdateHeightMin, lightUpdateHeightMax);
-                }
-    
-                UnderworldMethodHandles.chunkSetIsModified(toWrap, true);
-            }
         }
     
         private void updateSkylightNeighborHeight(int x, int z, int startY, int endY)
@@ -566,42 +430,6 @@ public class WorldProviderUnderWorld extends WorldProvider {
                             break;
                         }
                     }
-            
-                    if (!toWrap.getWorld().provider.getHasNoSky())
-                    {
-                        int skyLight = 15;
-                        int yToCheck = topSegment + 16 - 1;
-                
-                        while (true)
-                        {
-                            int opacity = this.getBlockLightOpacity(x, yToCheck, y);
-                    
-                            if (opacity == 0 && skyLight != 15)
-                            {
-                                opacity = 1;
-                            }
-                    
-                            skyLight -= opacity;
-                    
-                            if (skyLight > 0)
-                            {
-                                ExtendedBlockStorage extendedblockstorage = wrap_storageArrays[yToCheck >> 4];
-                        
-                                if (extendedblockstorage != NULL_BLOCK_STORAGE)
-                                {
-                                    extendedblockstorage.setExtSkylightValue(x, yToCheck & 15, y, skyLight);
-                                    toWrap.getWorld().notifyLightSet(new BlockPos((this.xPosition << 4) + x, yToCheck, (this.zPosition << 4) + y));
-                                }
-                            }
-                    
-                            --yToCheck;
-                    
-                            if (yToCheck <= 0 || skyLight <= 0)
-                            {
-                                break;
-                            }
-                        }
-                    }
                 }
             }
     
@@ -655,7 +483,7 @@ public class WorldProviderUnderWorld extends WorldProvider {
     
         @Override
         public boolean canSeeSky(BlockPos pos) {
-            return toWrap.canSeeSky(pos);
+            return false;
         }
     
         @Nullable
