@@ -33,7 +33,8 @@ public class WizardryTransformer implements IClassTransformer {
 			"net/minecraft/entity/MoverType", "vt",
 			"net/minecraft/entity/EntityLivingBase", "vn",
 			"net/minecraft/client/renderer/entity/RenderLivingBase", "bzy",
-			"net/minecraft/client/renderer/entity/Render", "bze"
+			"net/minecraft/client/renderer/entity/Render", "bze",
+			"net/minecraft/world/chunk/Chunk", "axu"
 	);
 
 	private static final String ASM_HOOKS = "com/teamwizardry/wizardry/asm/WizardryASMHooks";
@@ -44,6 +45,38 @@ public class WizardryTransformer implements IClassTransformer {
 		transformers.put("net.minecraft.entity.Entity", WizardryTransformer::transformEntity);
 		transformers.put("net.minecraft.entity.EntityLivingBase", WizardryTransformer::tranformEntityTravel);
 		transformers.put("net.minecraft.client.renderer.entity.Render", WizardryTransformer::transformShadowAndFireRendering);
+		transformers.put("net.minecraft.client.multiplayer.ChunkProviderClient", WizardryTransformer::transformChunkProviderClient);
+		transformers.put("net.minecraft.world.gen.ChunkProviderServer", WizardryTransformer::transformChunkProviderServer);
+	}
+
+	private static byte[] transformChunkProviderClient(byte[] basicClass) {
+		MethodSignature sig = new MethodSignature("loadChunk", "func_73158_c", "d", "(II)Lnet/minecraft/world/chunk/Chunk;");
+
+		return transform(basicClass, sig, "Wrapping Chunks",
+				combineByLast((AbstractInsnNode node) -> node.getOpcode() == ARETURN, // Filter
+						(MethodNode method, AbstractInsnNode node) -> {
+							InsnList newInstructions = new InsnList();
+							newInstructions.add(new VarInsnNode(ALOAD, 0));
+							newInstructions.add(new MethodInsnNode(INVOKESTATIC, ASM_HOOKS, "wrapChunk",
+									"(Lnet/minecraft/world/chunk/Chunk;Lnet/minecraft/client/multiplayer/ChunkProviderClient;)Lnet/minecraft/world/chunk/Chunk;", false));
+							method.instructions.insertBefore(node, newInstructions);
+							return false;
+						}));
+	}
+
+	private static byte[] transformChunkProviderServer(byte[] basicClass) {
+		MethodSignature sig = new MethodSignature("loadChunk", "func_186028_c", "b", "(II)Lnet/minecraft/world/chunk/Chunk;");
+
+		return transform(basicClass, sig, "Wrapping Chunks",
+				combineByLast((AbstractInsnNode node) -> node.getOpcode() == ARETURN, // Filter
+						(MethodNode method, AbstractInsnNode node) -> {
+							InsnList newInstructions = new InsnList();
+							newInstructions.add(new VarInsnNode(ALOAD, 0));
+							newInstructions.add(new MethodInsnNode(INVOKESTATIC, ASM_HOOKS, "wrapChunk",
+									"(Lnet/minecraft/world/chunk/Chunk;Lnet/minecraft/world/gen/ChunkProviderServer;)Lnet/minecraft/world/chunk/Chunk;", false));
+							method.instructions.insertBefore(node, newInstructions);
+							return false;
+						}));
 	}
 
 	private static byte[] transformShadowAndFireRendering(byte[] basicClass) {

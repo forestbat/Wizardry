@@ -1,9 +1,6 @@
 {
 	"variants": {
-		"has_light_value=true": {
-			"model": "wizardry:cloud"
-		},
-		"has_light_value=false": {
+		"normal": {
 			"model": "wizardry:cloud"
 		}
 	}

@@ -51,6 +51,7 @@ public class WorldProviderUnderWorld extends WorldProvider {
 
 	@Override
 	public void init() {
+		hasSkyLight = true;
 		biomeProvider = new BiomeProviderSingle(ModBiomes.BIOME_UNDERWORLD);
 		setDimension(ConfigValues.underworldID);
 	}

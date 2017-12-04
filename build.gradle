@@ -21,6 +21,7 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 minecraft {
+    useDepAts = true
     version = "$mc_version-$forge_version"
     runDir = "run"
     mappings = "$mcp_version"
@@ -49,7 +50,8 @@ jar {
     manifest {
         attributes(
                 "FMLCorePluginContainsFMLMod": "true",
-                "FMLCorePlugin": "$core_plugin"
+                "FMLCorePlugin": "$core_plugin",
+                "FMLAT": 'wizardry_at.cfg'
         )
     }
 }
@@ -67,6 +69,7 @@ processResources {
     from(sourceSets.main.resources.srcDirs) {
         exclude 'mcmod.info', 'pack.mcmeta'
     }
+    rename '(.+_at.cfg)', 'META-INF/$1'
 }
 
 idea {
