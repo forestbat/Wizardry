@@ -70,7 +70,6 @@ public class BlockJar extends BlockModContainer {
 				jar.age = ItemNBTHelper.getInt(stack, Constants.NBT.FAIRY_AGE, 0);
 				jar.hasFairy = true;
 				jar.markDirty();
-				worldIn.checkLight(pos);
 			}
 		}
 	}

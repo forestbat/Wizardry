@@ -219,7 +219,8 @@ public class UnderworldChunkWrapper extends Chunk {
         int i = pos.getX() & 15;
         int j = pos.getY();
         int k = pos.getZ() & 15;
-        return j <= this.heightMap[k << 4 | i];
+        int hM = this.heightMap[k << 4 | i];
+        return hM == 0 || j <= hM;
     }
 
     @Nullable
@@ -243,7 +244,7 @@ public class UnderworldChunkWrapper extends Chunk {
             Block oldBlock = oldState.getBlock();
             int oldOpacity = oldState.getLightOpacity(this.world, pos);
             ExtendedBlockStorage storage = this.storageArrays[y >> 4];
-            boolean flag = false;
+            boolean yShifted = false;
 
             if (storage == NULL_BLOCK_STORAGE) {
                 if (newBlock == Blocks.AIR) {
@@ -252,7 +253,7 @@ public class UnderworldChunkWrapper extends Chunk {
 
                 storage = new ExtendedBlockStorage(y >> 4 << 4, this.world.provider.hasSkyLight());
                 this.storageArrays[y >> 4] = storage;
-                flag = y >= height;
+                yShifted = y < height;
             }
 
             storage.set(chunkX, y & 15, chunkZ, state);
@@ -272,7 +273,7 @@ public class UnderworldChunkWrapper extends Chunk {
             if (storage.get(chunkX, y & 15, chunkZ).getBlock() != newBlock) {
                 return null;
             } else {
-                if (flag) {
+                if (yShifted) {
                     this.generateSkylightMap();
                 } else {
                     int newOpacity = state.getLightOpacity(this.world, pos);
@@ -335,22 +336,9 @@ public class UnderworldChunkWrapper extends Chunk {
     @Override
     public boolean checkLight(int x, int z) {
         int top = this.getBottomFilledSegment();
-        boolean opacityFlag = false;
         BlockPos.MutableBlockPos point = new BlockPos.MutableBlockPos((this.x << 4) + x, 0, (this.z << 4) + z);
 
-        for (int y = 0; y < top + 16; ++y) {
-            point.setPos(point.getX(), y, point.getZ());
-            int opacity = this.getBlockLightOpacity(point);
-
-            if (!opacityFlag && opacity > 0) {
-                opacityFlag = true;
-            } else if (opacityFlag && opacity == 0 && !this.world.checkLight(point)) {
-                return false;
-            }
-        }
-
-        int pointY = point.getY();
-        for (int y = 0; y < pointY; y++) {
+        for (int y = 0; y < top + 16; y++) {
             point.setPos(point.getX(), y, point.getZ());
 
             if (this.getBlockState(point).getLightValue(this.world, point) > 0) {
@@ -363,13 +351,8 @@ public class UnderworldChunkWrapper extends Chunk {
 
     @Override
     public void updateSkylightNeighborHeight(int x, int z, int startY, int endY) {
-        if (endY < startY) {
-            int temp = endY;
-            endY = startY;
-            startY = temp;
-        }
-        if (endY > startY && this.world.isAreaLoaded(new BlockPos(x, 0, z), 16)) {
-            for (int y = startY; y < endY; ++y) {
+        if (endY < startY && this.world.isAreaLoaded(new BlockPos(x, 0, z), 16)) {
+            for (int y = endY; y < startY; ++y) {
                 this.world.checkLightFor(EnumSkyBlock.SKY, new BlockPos(x, y, z));
             }
 

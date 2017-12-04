@@ -57,6 +57,11 @@ public class WorldProviderUnderWorld extends WorldProvider {
 	}
 
 	@Override
+	public float calculateCelestialAngle(long worldTime, float partialTicks) {
+		return super.calculateCelestialAngle(6000, 0);
+	}
+
+	@Override
 	public boolean canRespawnHere() {
 		return false;
 	}
@@ -68,7 +73,7 @@ public class WorldProviderUnderWorld extends WorldProvider {
 
 	@Override
 	public long getWorldTime() {
-		return 16000;
+		return 18000;
 	}
 
 	@SideOnly(Side.CLIENT)

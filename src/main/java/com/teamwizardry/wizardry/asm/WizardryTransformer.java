@@ -53,7 +53,7 @@ public class WizardryTransformer implements IClassTransformer {
 		MethodSignature sig = new MethodSignature("loadChunk", "func_73158_c", "d", "(II)Lnet/minecraft/world/chunk/Chunk;");
 
 		return transform(basicClass, sig, "Wrapping Chunks",
-				combineByLast((AbstractInsnNode node) -> node.getOpcode() == ARETURN, // Filter
+				combine((AbstractInsnNode node) -> node.getOpcode() == ASTORE && ((VarInsnNode) node).var == 3, // Filter
 						(MethodNode method, AbstractInsnNode node) -> {
 							InsnList newInstructions = new InsnList();
 							newInstructions.add(new VarInsnNode(ALOAD, 0));
@@ -65,10 +65,10 @@ public class WizardryTransformer implements IClassTransformer {
 	}
 
 	private static byte[] transformChunkProviderServer(byte[] basicClass) {
-		MethodSignature sig = new MethodSignature("loadChunk", "func_186028_c", "b", "(II)Lnet/minecraft/world/chunk/Chunk;");
+		MethodSignature sig = new MethodSignature("loadChunkFromFile", "func_73239_e", "f", "(II)Lnet/minecraft/world/chunk/Chunk;");
 
 		return transform(basicClass, sig, "Wrapping Chunks",
-				combineByLast((AbstractInsnNode node) -> node.getOpcode() == ARETURN, // Filter
+				combine((AbstractInsnNode node) -> node.getOpcode() == ARETURN, // Filter
 						(MethodNode method, AbstractInsnNode node) -> {
 							InsnList newInstructions = new InsnList();
 							newInstructions.add(new VarInsnNode(ALOAD, 0));
