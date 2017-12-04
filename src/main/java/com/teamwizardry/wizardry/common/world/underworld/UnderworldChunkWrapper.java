@@ -1,4 +1,4 @@
-package com.teamwizardry.wizardry.client.chunk;
+package com.teamwizardry.wizardry.common.world.underworld;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -51,7 +51,7 @@ public class UnderworldChunkWrapper extends Chunk {
     @SideOnly(Side.CLIENT)
     @Override
     public void generateHeightMap() {
-        int top = this.getTopFilledSegment();
+        int top = this.getBottomFilledSegment();
         this.heightMapMinimum = -1; // modified line: maximum not minimum
 
         for (int x = 0; x < 16; ++x) {
@@ -77,7 +77,7 @@ public class UnderworldChunkWrapper extends Chunk {
 
     @Override
     public void generateSkylightMap() {
-        int top = this.getTopFilledSegment();
+        int top = this.getBottomFilledSegment();
         this.heightMapMinimum = -1; // modified line: maximum not minimum
 
         for (int x = 0; x < 16; ++x) {
@@ -110,12 +110,7 @@ public class UnderworldChunkWrapper extends Chunk {
                         light -= opacity;
 
                         if (light > 0) {
-                            ExtendedBlockStorage extendedblockstorage = this.storageArrays[position >> 4];
-
-                            if (extendedblockstorage != NULL_BLOCK_STORAGE) {
-                                extendedblockstorage.setSkyLight(x, position & 15, z, light);
-                                this.world.notifyLightSet(new BlockPos((this.x << 4) + x, position, (this.z << 4) + z));
-                            }
+                            setSkyLightAt(x, position, z, light);
                         }
 
                         ++position; // modified line
@@ -129,6 +124,15 @@ public class UnderworldChunkWrapper extends Chunk {
         }
 
         this.dirty = true;
+    }
+
+    public void setSkyLightAt(int subX, int absY, int subZ, int light) {
+        ExtendedBlockStorage storage = this.storageArrays[absY >> 4];
+
+        if (storage != NULL_BLOCK_STORAGE) {
+            storage.setSkyLight(subX, absY & 15, subZ, light);
+            this.world.notifyLightSet(new BlockPos((this.x << 4) + subX, absY, (this.z << 4) + subZ));
+        }
     }
 
     @Override
@@ -152,22 +156,12 @@ public class UnderworldChunkWrapper extends Chunk {
 
             if (this.world.provider.hasSkyLight()) {
                 if (relightHeight < bottomBlock) {
-                    for (int subY = relightHeight; subY < bottomBlock; ++subY) {
-                        ExtendedBlockStorage storage = this.storageArrays[subY >> 4];
-
-                        if (storage != NULL_BLOCK_STORAGE) {
-                            storage.setSkyLight(x, subY & 15, z, 0); // modified line
-                            this.world.notifyLightSet(new BlockPos((this.x << 4) + x, subY, (this.z << 4) + z));
-                        }
+                    for (int absY = relightHeight; absY < bottomBlock; ++absY) {
+                        setSkyLightAt(x, absY, z, 0);
                     }
                 } else {
-                    for (int subY = bottomBlock; subY > relightHeight; ++subY) {
-                        ExtendedBlockStorage storage = this.storageArrays[subY >> 4];
-
-                        if (storage != NULL_BLOCK_STORAGE) {
-                            storage.setSkyLight(x, subY & 15, z, 15); // modified line: reverse
-                            this.world.notifyLightSet(new BlockPos((this.x << 4) + x, subY, (this.z << 4) + z));
-                        }
+                    for (int absY = bottomBlock; absY > relightHeight; ++absY) {
+                        setSkyLightAt(x, absY, z, 15);
                     }
                 }
 
@@ -247,7 +241,7 @@ public class UnderworldChunkWrapper extends Chunk {
         } else {
             Block newBlock = state.getBlock();
             Block oldBlock = oldState.getBlock();
-            int oldOpacity = oldState.getLightOpacity(this.world, pos); // Relocate old light value lookup here, so that it is called before TE is removed.
+            int oldOpacity = oldState.getLightOpacity(this.world, pos);
             ExtendedBlockStorage storage = this.storageArrays[y >> 4];
             boolean flag = false;
 
@@ -264,7 +258,7 @@ public class UnderworldChunkWrapper extends Chunk {
             storage.set(chunkX, y & 15, chunkZ, state);
 
             if (!this.world.isRemote) {
-                if (oldBlock != newBlock) //Only fire block breaks when the block changes.
+                if (oldBlock != newBlock)
                     oldBlock.breakBlock(this.world, pos, oldState);
                 TileEntity te = this.getTileEntity(pos, Chunk.EnumCreateEntityType.CHECK);
                 if (te != null && te.shouldRefresh(this.world, pos, oldState, state))
@@ -284,7 +278,7 @@ public class UnderworldChunkWrapper extends Chunk {
                     int newOpacity = state.getLightOpacity(this.world, pos);
 
                     if (newOpacity > 0) {
-                        if (y >= height) {
+                        if (y <= height) { // flip
                             this.relightBlock(chunkX, y - 1, chunkZ); // update below
                         }
                     } else if (y == height + 1) { // update below
@@ -296,7 +290,6 @@ public class UnderworldChunkWrapper extends Chunk {
                     }
                 }
 
-                // If capturing blocks, only run block physics for TE's. Non-TE's are handled in ForgeHooks.onPlaceItemIntoWorld
                 if (!this.world.isRemote && oldBlock != newBlock && (!this.world.captureBlockSnapshots || newBlock.hasTileEntity(state))) {
                     newBlock.onBlockAdded(this.world, pos, state);
                 }
@@ -320,9 +313,28 @@ public class UnderworldChunkWrapper extends Chunk {
         }
     }
 
+    @Nullable
+    public ExtendedBlockStorage getBottomExtendedBlockStorage()
+    {
+        for (ExtendedBlockStorage storage : storageArrays)
+        {
+            if (storage != NULL_BLOCK_STORAGE)
+            {
+                return storage;
+            }
+        }
+
+        return null;
+    }
+
+    public int getBottomFilledSegment() {
+        ExtendedBlockStorage storage = this.getBottomExtendedBlockStorage();
+        return storage == null ? 0 : storage.getYLocation();
+    }
+
     @Override
     public boolean checkLight(int x, int z) {
-        int top = this.getTopFilledSegment();
+        int top = this.getBottomFilledSegment();
         boolean opacityFlag = false;
         BlockPos.MutableBlockPos point = new BlockPos.MutableBlockPos((this.x << 4) + x, 0, (this.z << 4) + z);
 

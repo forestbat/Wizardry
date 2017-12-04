@@ -5,7 +5,7 @@ import com.teamwizardry.wizardry.api.events.EntityMoveWithHeadingEvent;
 import com.teamwizardry.wizardry.api.events.EntityPostMoveEvent;
 import com.teamwizardry.wizardry.api.events.EntityRenderShadowAndFireEvent;
 import com.teamwizardry.wizardry.api.events.PlayerClipEvent;
-import com.teamwizardry.wizardry.client.chunk.UnderworldChunkWrapper;
+import com.teamwizardry.wizardry.common.world.underworld.UnderworldChunkWrapper;
 import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;

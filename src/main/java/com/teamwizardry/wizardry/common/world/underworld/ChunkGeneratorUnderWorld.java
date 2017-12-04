@@ -2,7 +2,6 @@ package com.teamwizardry.wizardry.common.world.underworld;
 
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.RandUtilSeed;
-import com.teamwizardry.wizardry.client.chunk.UnderworldChunkWrapper;
 import com.teamwizardry.wizardry.common.entity.EntityFairy;
 import com.teamwizardry.wizardry.init.ModBlocks;
 import net.minecraft.entity.EnumCreatureType;
