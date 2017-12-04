@@ -50,14 +50,14 @@ public class WizardryASMHooks {
 
 	@SideOnly(Side.CLIENT)
 	public static Chunk wrapChunk(Chunk chunk, ChunkProviderClient chunkProvider) {
-		if (chunk == null) return null;
+		if (chunk == null || chunk.isEmpty()) return null;
 		if (chunkProvider.world.provider.getDimensionType() == Wizardry.underWorld)
 			return new UnderworldChunkWrapper(chunk);
 		return chunk;
 	}
 
 	public static Chunk wrapChunk(Chunk chunk, ChunkProviderServer chunkProvider) {
-		if (chunk == null) return null;
+		if (chunk == null || chunk.isEmpty()) return null;
 		if (chunkProvider.world.provider.getDimensionType() == Wizardry.underWorld)
 			return new UnderworldChunkWrapper(chunk);
 		return chunk;

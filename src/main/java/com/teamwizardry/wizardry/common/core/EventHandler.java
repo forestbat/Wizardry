@@ -104,7 +104,8 @@ public class EventHandler {
 				if (bedrock != null) {
 					if (event.getEntity().getEntityWorld().getBlockState(bedrock).getBlock() == Blocks.BEDROCK) {
 						TeleportUtil.teleportToDimension((EntityPlayer) event.getEntity(), Wizardry.underWorld.getId(), 0, 300, 0);
-						((EntityPlayer) event.getEntity()).addPotionEffect(new PotionEffect(ModPotions.NULLIFY_GRAVITY, 100, 0, true, false));
+						if (!event.getEntity().world.isRemote)
+							((EntityPlayer) event.getEntity()).addPotionEffect(new PotionEffect(ModPotions.NULLIFY_GRAVITY, 100, 0, true, false));
 						fallResetUUIDs.add(event.getEntity().getUniqueID());
 						event.setCanceled(true);
 					}
@@ -122,7 +123,8 @@ public class EventHandler {
 				if (bedrock != null) {
 					if (event.getEntity().getEntityWorld().getBlockState(bedrock).getBlock() == Blocks.BEDROCK) {
 						TeleportUtil.teleportToDimension(event.getEntityPlayer(), Wizardry.underWorld.getId(), 0, 300, 0);
-						((EntityPlayer) event.getEntity()).addPotionEffect(new PotionEffect(ModPotions.NULLIFY_GRAVITY, 100, 0, true, false));
+						if (!event.getEntity().world.isRemote)
+							((EntityPlayer) event.getEntity()).addPotionEffect(new PotionEffect(ModPotions.NULLIFY_GRAVITY, 100, 0, true, false));
 						fallResetUUIDs.add(event.getEntityPlayer().getUniqueID());
 					}
 				}
