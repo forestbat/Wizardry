@@ -27,7 +27,7 @@ public class BlockCloud extends BlockMod {
 		super("cloud", Material.CLOTH);
 		setHardness(0.5f);
 		setSoundType(SoundType.CLOTH);
-		setLightOpacity(1);
+		setLightOpacity(2);
 	}
 
 	@Override
