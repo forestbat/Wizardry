@@ -110,7 +110,7 @@ public class UnderworldChunkWrapper extends Chunk {
                         light -= opacity;
 
                         if (light > 0) {
-                            setSkyLightAt(x, position, z, light);
+                            setSkyLightAtForce(x, position, z, light);
                         }
 
                         ++position; // modified line
@@ -133,6 +133,18 @@ public class UnderworldChunkWrapper extends Chunk {
             storage.setSkyLight(subX, absY & 15, subZ, light);
             this.world.notifyLightSet(new BlockPos((this.x << 4) + subX, absY, (this.z << 4) + subZ));
         }
+    }
+
+    public void setSkyLightAtForce(int subX, int absY, int subZ, int light) {
+        ExtendedBlockStorage storage = this.storageArrays[absY >> 4];
+
+        if (storage == NULL_BLOCK_STORAGE) {
+            storage = new ExtendedBlockStorage(absY >> 4 << 4, this.world.provider.hasSkyLight());
+            this.storageArrays[absY >> 4] = storage;
+        }
+
+        storage.setSkyLight(subX, absY & 15, subZ, light);
+        this.world.notifyLightSet(new BlockPos((this.x << 4) + subX, absY, (this.z << 4) + subZ));
     }
 
     @Override
