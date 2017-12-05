@@ -34,7 +34,9 @@ public class WizardryTransformer implements IClassTransformer {
 			"net/minecraft/entity/EntityLivingBase", "vn",
 			"net/minecraft/client/renderer/entity/RenderLivingBase", "bzy",
 			"net/minecraft/client/renderer/entity/Render", "bze",
-			"net/minecraft/world/chunk/Chunk", "axu"
+			"net/minecraft/world/chunk/Chunk", "axu",
+			"net/minecraft/world/World", "ams",
+			"net/minecraft/nbt/NBTTagCompound", "fy"
 	);
 
 	private static final String ASM_HOOKS = "com/teamwizardry/wizardry/asm/WizardryASMHooks";
@@ -46,13 +48,13 @@ public class WizardryTransformer implements IClassTransformer {
 		transformers.put("net.minecraft.entity.EntityLivingBase", WizardryTransformer::tranformEntityTravel);
 		transformers.put("net.minecraft.client.renderer.entity.Render", WizardryTransformer::transformShadowAndFireRendering);
 		transformers.put("net.minecraft.client.multiplayer.ChunkProviderClient", WizardryTransformer::transformChunkProviderClient);
-		transformers.put("net.minecraft.world.gen.ChunkProviderServer", WizardryTransformer::transformChunkProviderServer);
+		transformers.put("net.minecraft.world.chunk.storage.AnvilChunkLoader", WizardryTransformer::transformChunkLoaderAnvil);
 	}
 
 	private static byte[] transformChunkProviderClient(byte[] basicClass) {
 		MethodSignature sig = new MethodSignature("loadChunk", "func_73158_c", "d", "(II)Lnet/minecraft/world/chunk/Chunk;");
 
-		return transform(basicClass, sig, "Wrapping Chunks",
+		return transform(basicClass, sig, "Wrapping client chunk simulator",
 				combine((AbstractInsnNode node) -> node.getOpcode() == ASTORE && ((VarInsnNode) node).var == 3, // Filter
 						(MethodNode method, AbstractInsnNode node) -> {
 							InsnList newInstructions = new InsnList();
@@ -64,18 +66,18 @@ public class WizardryTransformer implements IClassTransformer {
 						}));
 	}
 
-	private static byte[] transformChunkProviderServer(byte[] basicClass) {
-		MethodSignature sig = new MethodSignature("loadChunkFromFile", "func_73239_e", "f", "(II)Lnet/minecraft/world/chunk/Chunk;");
+	private static byte[] transformChunkLoaderAnvil(byte[] basicClass) {
+		MethodSignature sig = new MethodSignature("readChunkFromNBT", "func_75823_a", "a", "(Lnet/minecraft/world/World;Lnet/minecraft/nbt/NBTTagCompound;)Lnet/minecraft/world/chunk/Chunk;");
 
-		return transform(basicClass, sig, "Wrapping Chunks",
-				combine((AbstractInsnNode node) -> node.getOpcode() == ARETURN, // Filter
+		return transform(basicClass, sig, "Wrapping chunk producer",
+				combine((AbstractInsnNode node) -> node.getOpcode() == ASTORE && ((VarInsnNode) node).var == 5, // Filter
 						(MethodNode method, AbstractInsnNode node) -> {
 							InsnList newInstructions = new InsnList();
-							newInstructions.add(new VarInsnNode(ALOAD, 0));
+							newInstructions.add(new VarInsnNode(ALOAD, 1));
 							newInstructions.add(new MethodInsnNode(INVOKESTATIC, ASM_HOOKS, "wrapChunk",
-									"(Lnet/minecraft/world/chunk/Chunk;Lnet/minecraft/world/gen/ChunkProviderServer;)Lnet/minecraft/world/chunk/Chunk;", false));
+									"(Lnet/minecraft/world/chunk/Chunk;Lnet/minecraft/world/World;)Lnet/minecraft/world/chunk/Chunk;", false));
 							method.instructions.insertBefore(node, newInstructions);
-							return false;
+							return true;
 						}));
 	}
 

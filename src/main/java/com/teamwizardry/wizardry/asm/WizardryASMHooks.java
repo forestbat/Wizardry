@@ -11,8 +11,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.MoverType;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -56,9 +56,9 @@ public class WizardryASMHooks {
 		return chunk;
 	}
 
-	public static Chunk wrapChunk(Chunk chunk, ChunkProviderServer chunkProvider) {
+	public static Chunk wrapChunk(Chunk chunk, World world) {
 		if (chunk == null || chunk.isEmpty()) return null;
-		if (chunkProvider.world.provider.getDimensionType() == Wizardry.underWorld)
+		if (world.provider.getDimensionType() == Wizardry.underWorld)
 			return new UnderworldChunkWrapper(chunk);
 		return chunk;
 	}
