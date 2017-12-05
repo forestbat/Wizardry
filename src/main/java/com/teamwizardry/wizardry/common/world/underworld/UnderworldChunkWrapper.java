@@ -228,11 +228,10 @@ public class UnderworldChunkWrapper extends Chunk {
 
     @Override
     public boolean canSeeSky(BlockPos pos) {
-        int i = pos.getX() & 15;
-        int j = pos.getY();
-        int k = pos.getZ() & 15;
-        int hM = this.heightMap[k << 4 | i];
-        return hM == 0 || j <= hM;
+        int subX = pos.getX() & 15;
+        int absY = pos.getY();
+        int subZ = pos.getZ() & 15;
+        return absY <= this.heightMap[subZ << 4 | subX];
     }
 
     @Nullable
