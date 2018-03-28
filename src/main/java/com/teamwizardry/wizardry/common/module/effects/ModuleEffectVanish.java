@@ -1,8 +1,8 @@
 package com.teamwizardry.wizardry.common.module.effects;
 
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
@@ -21,10 +21,8 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
-
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectVanish extends ModuleEffect {
@@ -42,17 +40,18 @@ public class ModuleEffectVanish extends ModuleEffect {
 
 	@Override
 	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		BlockPos targetPos = spell.getData(BLOCK_HIT);
-		Entity caster = spell.getData(CASTER);
-		Entity targetEntity = spell.getData(ENTITY_HIT);
+		BlockPos targetPos = spell.getTargetPos();
+		Entity caster = spell.getCaster();
+		Entity targetEntity = spell.getVictim();
 
-		double range = getModifier(spell, Attributes.AREA, 1, 64);
-		double strength = getModifier(spell, Attributes.POTENCY, 1, 64);
+		double range = spellRing.getAttributeValue(AttributeRegistry.AREA, spell);
+		double strength = spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell);
 		range = 32;
 
 		if (targetEntity != null && targetEntity instanceof EntityLivingBase) {
+			if (!spellRing.taxCaster(spell)) return false;
 			((EntityLivingBase) targetEntity).addPotionEffect(new PotionEffect(ModPotions.VANISH, 100, 0, true, false));
 		}
 		return true;
@@ -60,19 +59,13 @@ public class ModuleEffectVanish extends ModuleEffect {
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Vec3d position = spell.getData(TARGET_HIT);
+		Vec3d position = spell.getTarget();
 
 		if (position == null) return;
 
 		LibParticles.EFFECT_REGENERATE(world, position, getPrimaryColor());
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectVanish());
 	}
 
 }

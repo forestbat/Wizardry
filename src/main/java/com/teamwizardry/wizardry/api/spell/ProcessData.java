@@ -7,7 +7,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public class ProcessData {
 
@@ -16,6 +16,6 @@ public class ProcessData {
 		T serialize(@Nullable E object);
 
 		@Nullable
-		E deserialize(@Nonnull World world, @Nonnull T object);
+		E deserialize(@Nullable World world, @Nonnull T object);
 	}
 }

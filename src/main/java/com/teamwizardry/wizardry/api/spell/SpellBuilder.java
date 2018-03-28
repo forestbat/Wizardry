@@ -1,54 +1,93 @@
 package com.teamwizardry.wizardry.api.spell;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import javax.annotation.Nonnull;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.teamwizardry.wizardry.api.spell.module.Module;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.ModuleRegistry;
 import com.teamwizardry.wizardry.init.ModItems;
-
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
+
+import javax.annotation.Nonnull;
+import java.util.*;
 
 public class SpellBuilder {
 
+	// TODO: config this
 	private final static Item codeLineBreak = ModItems.DEVIL_DUST;
 
 	private List<ItemStack> inventory;
-	private List<Module> spell;
+	private List<SpellRing> spell;
 
-	public SpellBuilder(List<ItemStack> inventory) {
+	public SpellBuilder(List<ItemStack> inventory, boolean javaIsStupid) {
 		this.inventory = inventory;
 		spell = toSpell(inventory);
 	}
 
-	public SpellBuilder(HashSet<ArrayList<Module>> moduleHeads) {
-		inventory = new ArrayList<>();
+	public SpellBuilder(List<SpellRing> chains, boolean javaisReallyStupid, boolean fml) {
+		this.spell = chains;
 
-		for (ArrayList<Module> modules : moduleHeads) {
-			for (Module module : modules) {
-				if (module instanceof ModuleModifier) {
-					ModuleModifier moduleModifier = (ModuleModifier) module;
-					ItemStack lastStack = inventory.get(inventory.size() - 1);
-					if (ItemStack.areItemsEqual(lastStack, moduleModifier.getItemStack())) {
-						lastStack.setCount(lastStack.getCount() + moduleModifier.getItemStack().getCount());
-					} else inventory.add(moduleModifier.getItemStack().copy());
-				} else inventory.add(module.getItemStack().copy());
+		Deque<ItemStack> dequeItems = new ArrayDeque<>();
+
+		for (SpellRing chainHeads : chains) {
+
+			for (SpellRing spellRing : SpellUtils.getAllSpellRings(chainHeads)) {
+				if (spellRing.getModule() == null) continue;
+
+				dequeItems.add(spellRing.getModule().getItemStack().copy());
+
+				for (ModuleModifier modifier : spellRing.getModifiers().keySet()) {
+					ItemStack stack = modifier.getItemStack().copy();
+					stack.setCount(stack.getCount() * spellRing.getModifiers().get(modifier));
+					dequeItems.add(stack);
+				}
 			}
-			inventory.add(new ItemStack(codeLineBreak));
-		}
 
-		inventory.add(new ItemStack(ModItems.PEARL_NACRE));
+			dequeItems.add(new ItemStack(codeLineBreak));
+		}
+		dequeItems.add(new ItemStack(ModItems.PEARL_NACRE));
+
+		inventory = new ArrayList<>(dequeItems);
+
+		for (SpellRing ring : chains) {
+			SpellRing chainEnd = ring;
+			while (chainEnd != null) {
+				if (chainEnd.getChildRing() == null) {
+					if (chainEnd.getModule() != null) {
+						chainEnd.setPrimaryColor(chainEnd.getModule().getPrimaryColor());
+						chainEnd.setSecondaryColor(chainEnd.getModule().getSecondaryColor());
+					}
+					chainEnd.updateColorChain();
+					break;
+				}
+
+				chainEnd = chainEnd.getChildRing();
+			}
+		}
+	}
+
+	public SpellBuilder(List<List<Module>> modules) {
+		Deque<ItemStack> dequeItems = new ArrayDeque<>();
+
+		for (List<Module> moduleChain : modules) {
+			for (Module module : moduleChain) {
+
+				if (module instanceof ModuleModifier) {
+
+					ItemStack lastStack = dequeItems.peekLast();
+					if (lastStack.isItemEqual(module.getItemStack())) {
+						ItemStack stack = dequeItems.pollLast();
+						stack.setCount(stack.getCount() + module.getItemStack().getCount());
+						dequeItems.add(stack);
+					} else dequeItems.add(module.getItemStack().copy());
+
+				} else {
+					dequeItems.add(module.getItemStack().copy());
+				}
+			}
+		}
+		dequeItems.add(new ItemStack(ModItems.PEARL_NACRE));
+
+		inventory = new ArrayList<>(dequeItems);
 
 		spell = toSpell(inventory);
 	}
@@ -67,86 +106,89 @@ public class SpellBuilder {
 		return branches;
 	}
 
-	private List<Module> toSpell(List<ItemStack> inventory) {
-		List<Module> spellList = new ArrayList<>();
-		Set<List<Module>> compiled = new HashSet<>();
+	private List<SpellRing> toSpell(List<ItemStack> inventory) {
+		List<SpellRing> spellList = new ArrayList<>();
+		Set<List<SpellRing>> spellChains = new HashSet<>();
 
 		List<List<ItemStack>> lines = brancher(inventory, codeLineBreak);
 
-		Module lastModule = null;
+		// Spell chain from multiple chains
 		for (List<ItemStack> line : lines) {
-			List<Module> lineModule = new ArrayList<>();
+
+			// List is made of all modules that aren't modifiers for this spellData chain.
+			Deque<SpellRing> uncompressedChain = new ArrayDeque<>();
+
+			// Step through each item in line. If modifier, add to lastModule, if not, add to compiled.
 			for (ItemStack stack : line) {
-				Module module = ModuleRegistry.INSTANCE.getModule(stack);
-				if (module == null) continue;
-				if (module instanceof ModuleModifier) {
-					if (lastModule == null) continue;
-					for (int i = 0; i < stack.getCount(); i++)
-						((ModuleModifier) module).apply(lastModule);
-				} else {
-					lastModule = module;
-					lineModule.add(module);
-				}
-			}
-			lineModule.forEach(Module::processModifiers);
-			compiled.add(lineModule);
-		}
+				for (int i = 0; i < stack.getCount(); i++) {
+					Module module = ModuleRegistry.INSTANCE.getModule(stack);
 
-		// We now have a code line of modules. link them as children in order.
-		for (List<Module> modules : compiled) {
-			Deque<Module> deque = new ArrayDeque<>();
-			deque.addAll(modules);
+					if (module == null) continue;
 
-			for (@SuppressWarnings("unused") Module ignored : modules) {
-				if (deque.peekFirst() == deque.peekLast()) {
-					spellList.add(deque.peekLast());
-					break;
-				}
-				if (deque.peekLast() != null) {
-					Module last = deque.pollLast();
-					if (deque.peekLast() != null) {
-						Module beforeLast = deque.peekLast();
-						beforeLast.nextModule = last;
-						last.prevModule = beforeLast;
+					if (module instanceof ModuleModifier) {
+						if (!uncompressedChain.isEmpty()) {
+							SpellRing lastRing = uncompressedChain.peekLast();
+							lastRing.addModifier((ModuleModifier) module);
+						}
+					} else {
+						SpellRing ring = new SpellRing(module);
+						uncompressedChain.add(ring);
 					}
 				}
 			}
+
+			spellChains.add(new ArrayList<>(uncompressedChain));
 		}
 
-		// PROCESS COLOR
-		for (Module module : spellList) {
-			module.setIsHead(true);
-			Module.processColor(module);
+		// We now have a code line of modules. link them as children in order.
+		for (List<SpellRing> rings : spellChains) {
+			if (rings.isEmpty()) continue;
+
+			Deque<SpellRing> deque = new ArrayDeque<>(rings);
+
+			SpellRing ringHead = deque.pop();
+
+			SpellRing lastRing = ringHead;
+			while (!deque.isEmpty()) {
+				SpellRing child = deque.pop();
+
+				lastRing.setChildRing(child);
+				child.setParentRing(lastRing);
+
+				lastRing = child;
+			}
+
+			spellList.add(ringHead);
+
 		}
+
+		for (SpellRing ring : spellList) {
+			SpellRing chainEnd = ring;
+			while (chainEnd != null) {
+				if (chainEnd.getChildRing() == null) {
+					chainEnd.processModifiers();
+
+					if (chainEnd.getModule() != null) {
+						chainEnd.setPrimaryColor(chainEnd.getModule().getPrimaryColor());
+						chainEnd.setSecondaryColor(chainEnd.getModule().getSecondaryColor());
+					}
+					chainEnd.updateColorChain();
+					break;
+				}
+
+				chainEnd.processModifiers();
+				chainEnd = chainEnd.getChildRing();
+			}
+		}
+
 		return spellList;
-	}
-
-	public JsonObject toJson() {
-		if (inventory.isEmpty()) return null;
-		JsonObject object = new JsonObject();
-		JsonArray array = new JsonArray();
-
-		for (ItemStack stack : inventory) {
-			ResourceLocation location = stack.getItem().getRegistryName();
-			if (location == null) continue;
-
-			JsonObject obj = new JsonObject();
-			obj.addProperty("name", location.toString());
-			obj.addProperty("meta", stack.getItemDamage());
-			obj.addProperty("count", stack.getCount());
-			array.add(obj);
-		}
-
-		object.add("list", array);
-
-		return object;
 	}
 
 	public List<ItemStack> getInventory() {
 		return inventory;
 	}
 
-	public List<Module> getSpell() {
+	public List<SpellRing> getSpell() {
 		return spell;
 	}
 }

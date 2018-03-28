@@ -10,7 +10,7 @@ import net.minecraft.util.text.TextComponentTranslation;
 import java.util.HashMap;
 
 /**
- * Created by Saad on 7/1/2016.
+ * Created by Demoniaque on 7/1/2016.
  */
 public class ModAdvancements {
 
@@ -26,20 +26,19 @@ public class ModAdvancements {
 				new ResourceLocation(Wizardry.MODID, "advancement.manapool"),
 				null,
 				new DisplayInfo(
-						new ItemStack(ModItems.MANA_ORB),
+						new ItemStack(ModItems.ORB),
 						new TextComponentTranslation("wizardry.advancement.begin.name"),
 						new TextComponentTranslation("wizardry.advancement.begin.desc"),
 						null, FrameType.GOAL, true, true, false),
 				AdvancementRewards.EMPTY, new HashMap<>(), new String[0][0]);
 
-
-	//	ModAdvancement("manapool", 1, -2, ModItems.MANA_ORB, null);
-	//	BOOK = new ModAdvancement("book", 3, 0, ModItems.BOOK, MANAPOOL);
-	//	DEVILDUST = new ModAdvancement("devildust", -1, 0, ModItems.DEVIL_DUST, null);
-	//	CRUNCH = new ModAdvancement("crunch", 1, 2, Blocks.BEDROCK, null);
+		//	ModAdvancement("manapool", 1, -2, ModItems.ORB, null);
+		//	BOOK = new ModAdvancement("book", 3, 0, ModItems.BOOK, MANAPOOL);
+		//	DEVILDUST = new ModAdvancement("devildust", -1, 0, ModItems.DEVIL_DUST, null);
+		//	CRUNCH = new ModAdvancement("crunch", 1, 2, Blocks.BEDROCK, null);
 //
-	//	PAGE = new AchievementPage(Wizardry.MODNAME, ModAdvancement.achievements.toArray(new Achievement[ModAdvancement.achievements.size()]));
-	//	AchievementPage.registerAchievementPage(PAGE);
+		//	PAGE = new AchievementPage(Wizardry.MODNAME, ModAdvancement.achievements.toArray(new Achievement[ModAdvancement.achievements.size()]));
+		//	AchievementPage.registerAchievementPage(PAGE);
 //
 	}
 }

@@ -2,7 +2,7 @@ package com.teamwizardry.wizardry.common.module.effects;
 
 import com.teamwizardry.librarianlib.features.methodhandles.MethodHandleHelper;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
 import com.teamwizardry.wizardry.api.util.RandUtil;
@@ -24,14 +24,13 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.ENTITY_HIT;
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.TARGET_HIT;
-
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectDisarm extends ModuleEffect {
+
+	private Function1<EntityLiving, Object> inventoryHandsDropChances = MethodHandleHelper.wrapperForGetter(EntityLiving.class, "inventoryHandsDropChances", "field_184655_bs", "bs");
 
 	@Nonnull
 	@Override
@@ -40,12 +39,12 @@ public class ModuleEffectDisarm extends ModuleEffect {
 	}
 
 	@Override
-	public boolean run(@Nonnull SpellData spell) {
-		Entity targetEntity = spell.getData(ENTITY_HIT);
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Entity targetEntity = spell.getVictim();
 
 		if (targetEntity instanceof EntityLivingBase) {
 			if (!spell.world.isRemote) {
-				if (!tax(this, spell)) return false;
+				if (!spellRing.taxCaster(spell)) return false;
 
 				ItemStack held = ((EntityLivingBase) targetEntity).getHeldItemMainhand();
 
@@ -69,24 +68,21 @@ public class ModuleEffectDisarm extends ModuleEffect {
 					held.setCount(0);
 
 					float dropChance = 0;
-					
-					if (targetEntity instanceof EntityLiving)
-					{
+
+					if (targetEntity instanceof EntityLiving) {
 						EntityLiving entity = (EntityLiving) targetEntity;
-						
+
 						Object o = inventoryHandsDropChances.invoke(entity);
 						float[] dropChances;
-						if (o instanceof float[])
-						{
+						if (o instanceof float[]) {
 							dropChances = (float[]) o;
 							dropChance = dropChances[EntityEquipmentSlot.MAINHAND.getIndex()];
 						}
 					}
-					
+
 					boolean flag = dropChance > 1.0;
 
-					if (!held.isEmpty() && flag && RandUtil.nextDouble() < dropChance)
-					{
+					if (!held.isEmpty() && flag && RandUtil.nextDouble() < dropChance) {
 						EntityItem item = new EntityItem(spell.world, targetEntity.posX, targetEntity.posY + 1, targetEntity.posZ, stack);
 						item.setPickupDelay(5);
 						spell.world.playSound(null, targetEntity.getPosition(), ModSounds.ELECTRIC_BLAST, SoundCategory.NEUTRAL, 1, 1);
@@ -101,20 +97,12 @@ public class ModuleEffectDisarm extends ModuleEffect {
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Vec3d position = spell.getData(TARGET_HIT);
+		Vec3d position = spell.getTarget();
 
 		if (position == null) return;
 
 		LibParticles.EFFECT_REGENERATE(world, position, getPrimaryColor());
 	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectDisarm());
-	}
-	
-	private Function1<EntityLiving, Object> inventoryHandsDropChances = MethodHandleHelper.wrapperForGetter(EntityLiving.class, "inventoryHandsDropChances", "field_184655_bs", "bs");
 }

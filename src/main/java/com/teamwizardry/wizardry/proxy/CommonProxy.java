@@ -4,6 +4,7 @@ import com.teamwizardry.librarianlib.features.network.PacketHandler;
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.ConfigValues;
 import com.teamwizardry.wizardry.api.arena.ArenaManager;
+import com.teamwizardry.wizardry.api.item.BaublesSupport;
 import com.teamwizardry.wizardry.api.spell.module.ModuleRegistry;
 import com.teamwizardry.wizardry.client.gui.GuiHandler;
 import com.teamwizardry.wizardry.common.advancement.AchievementEvents;
@@ -42,11 +43,12 @@ public class CommonProxy {
 	}
 
 	public void preInit(FMLPreInitializationEvent event) {
+
 		directory = new File(event.getModConfigurationDirectory(), Wizardry.MODID);
 		if (!directory.exists()) if (!directory.mkdirs())
 			Wizardry.logger.fatal("    > SOMETHING WENT WRONG! Could not create config folder!!");
 
-		ArenaManager.INSTANCE.getClass();
+		MinecraftForge.EVENT_BUS.register(BaublesSupport.class);
 		NemezEventHandler.register();
 
 		new ModTab();
@@ -56,7 +58,7 @@ public class CommonProxy {
 		ModPotions.init();
 		ModEntities.init();
 		ModCapabilities.preInit();
-		
+
 		NetworkRegistry.INSTANCE.registerGuiHandler(Wizardry.instance, new GuiHandler());
 
 		Wizardry.underWorld = DimensionType.register("underworld", "_dim", ConfigValues.underworldID, WorldProviderUnderWorld.class, false);
@@ -71,7 +73,7 @@ public class CommonProxy {
 		MinecraftForge.EVENT_BUS.register(new ModuleEffectLeap());
 		MinecraftForge.EVENT_BUS.register(ModBiomes.BIOME_UNDERWORLD);
 		MinecraftForge.EVENT_BUS.register(this);
-		SpellTicker.INSTANCE.getClass();
+		MinecraftForge.EVENT_BUS.register(SpellTicker.class);
 
 		PacketHandler.register(PacketSendSpellToBook.class, Side.SERVER);
 		PacketHandler.register(PacketSyncCape.class, Side.SERVER);
@@ -88,31 +90,29 @@ public class CommonProxy {
 
 	public void init(FMLInitializationEvent event) {
 		GameRegistry.registerWorldGenerator(new GenHandler(), 0);
-		
+
 		manaRecipeLoading:
 		{
-			File recipeDirectory = new File(directory, "mana_recipes");
-			if (!recipeDirectory.exists())
-				if (!recipeDirectory.mkdirs())
-				{
+			File recipeDirectory = new File(directory, "fluid_recipes");
+			if (!recipeDirectory.exists()) {
+				if (!recipeDirectory.mkdirs()) {
 					Wizardry.logger.error("    > SOMETHING WENT WRONG! Could not create directory " + recipeDirectory.getPath());
 					break manaRecipeLoading;
 				}
-			if (!ConfigValues.customManaRecipes)
 				ManaRecipes.INSTANCE.copyMissingRecipes(recipeDirectory);
+			}
 			ManaRecipes.INSTANCE.loadRecipes(recipeDirectory);
 		}
 		fireRecipeLoading:
 		{
 			File recipeDirectory = new File(directory, "fire_recipes");
-			if (!recipeDirectory.exists())
-				if (!recipeDirectory.mkdirs())
-				{
+			if (!recipeDirectory.exists()) {
+				if (!recipeDirectory.mkdirs()) {
 					Wizardry.logger.error("    > SOMETHING WENT WRONG! Could not create directory " + recipeDirectory.getPath());
 					break fireRecipeLoading;
 				}
-			if (!ConfigValues.customFireRecipes)
 				FireRecipes.INSTANCE.copyMissingRecipes(recipeDirectory);
+			}
 			FireRecipes.INSTANCE.loadRecipes(recipeDirectory);
 		}
 	}

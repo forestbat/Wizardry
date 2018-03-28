@@ -10,8 +10,8 @@ import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.spell.IBlockSelectable;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
@@ -19,7 +19,7 @@ import com.teamwizardry.wizardry.api.util.BlockUtils;
 import com.teamwizardry.wizardry.api.util.PosUtils;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.interp.InterpScale;
-import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierExtendRange;
+import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreaseRange;
 import com.teamwizardry.wizardry.init.ModSounds;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -42,10 +42,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import javax.annotation.Nonnull;
 import java.util.HashSet;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
+import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.FACE_HIT;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectSubstitution extends ModuleEffect implements IBlockSelectable {
@@ -59,21 +59,21 @@ public class ModuleEffectSubstitution extends ModuleEffect implements IBlockSele
 
 	@Override
 	public ModuleModifier[] applicableModifiers() {
-		return new ModuleModifier[]{new ModuleModifierExtendRange()};
+		return new ModuleModifier[]{new ModuleModifierIncreaseRange()};
 	}
 
 	@Override
 	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
-		Entity targetEntity = spell.getData(ENTITY_HIT);
-		Entity caster = spell.getData(CASTER);
-		BlockPos targetBlock = spell.getData(BLOCK_HIT);
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Entity targetEntity = spell.getVictim();
+		Entity caster = spell.getCaster();
+		BlockPos targetBlock = spell.getTargetPos();
 		EnumFacing facing = spell.getData(FACE_HIT);
 
 		if (caster == null) return false;
 
 		if (targetEntity != null && targetEntity instanceof EntityLivingBase) {
-			if (!tax(this, spell)) return false;
+			if (!spellRing.taxCaster(spell)) return false;
 
 			Vec3d posTarget = new Vec3d(targetEntity.posX, targetEntity.posY, targetEntity.posZ),
 					posCaster = new Vec3d(caster.posX, caster.posY, caster.posZ);
@@ -102,7 +102,7 @@ public class ModuleEffectSubstitution extends ModuleEffect implements IBlockSele
 
 				if (touchedBlock.getBlock() == state.getBlock()) return false;
 
-				double strength = getModifier(spell, Attributes.RANGE, 10, 64);
+				double strength = spellRing.getAttributeValue(AttributeRegistry.RANGE, spell);
 
 				ItemStack stackBlock = null;
 				for (ItemStack stack : ((EntityPlayer) caster).inventory.mainInventory) {
@@ -125,7 +125,7 @@ public class ModuleEffectSubstitution extends ModuleEffect implements IBlockSele
 				if (blocks.isEmpty()) return true;
 
 				for (BlockPos ignored : blocks) {
-					if (!tax(this, spell)) return false;
+					if (!spellRing.taxCaster(spell)) return false;
 					BlockPos nearest = null;
 					for (BlockPos pos : blocks) {
 						if (spell.world.isAirBlock(pos)) continue;
@@ -192,11 +192,11 @@ public class ModuleEffectSubstitution extends ModuleEffect implements IBlockSele
 	@Override
 	@SuppressWarnings("unused")
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Entity caster = spell.getData(CASTER);
-		BlockPos targetBlock = spell.getData(BLOCK_HIT);
-		Entity targetEntity = spell.getData(ENTITY_HIT);
+		Entity caster = spell.getCaster();
+		BlockPos targetBlock = spell.getTargetPos();
+		Entity targetEntity = spell.getVictim();
 
 		if (targetEntity != null && caster != null) {
 
@@ -243,11 +243,5 @@ public class ModuleEffectSubstitution extends ModuleEffect implements IBlockSele
 				));
 			});
 		}
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectSubstitution());
 	}
 }

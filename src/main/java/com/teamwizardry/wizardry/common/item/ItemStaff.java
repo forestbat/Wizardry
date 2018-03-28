@@ -2,15 +2,13 @@ package com.teamwizardry.wizardry.common.item;
 
 import com.teamwizardry.librarianlib.core.LibrarianLib;
 import com.teamwizardry.librarianlib.features.base.item.ItemMod;
+import com.teamwizardry.librarianlib.features.helpers.ItemNBTHelper;
 import com.teamwizardry.librarianlib.features.utilities.client.TooltipHelper;
+import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.item.BaublesSupport;
 import com.teamwizardry.wizardry.api.item.ICooldown;
-import com.teamwizardry.wizardry.api.item.INacreColorable;
-import com.teamwizardry.wizardry.api.spell.IBlockSelectable;
-import com.teamwizardry.wizardry.api.spell.IContinuousModule;
-import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.SpellUtils;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.item.INacreProduct;
+import com.teamwizardry.wizardry.api.spell.*;
 import com.teamwizardry.wizardry.common.module.shapes.ModuleShapeTouch;
 import com.teamwizardry.wizardry.init.ModItems;
 import net.minecraft.client.Minecraft;
@@ -30,17 +28,18 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by Saad on 6/7/2016.
+ * Created by Demoniaque on 6/7/2016.
  */
-public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayColorable, ICooldown {
+public class ItemStaff extends ItemMod implements INacreProduct.INacreDecayProduct, ICooldown {
 
 	public ItemStaff() {
 		super("staff", "staff", "staff_pearl");
@@ -55,8 +54,8 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 			return false;
 
 		boolean touch = false;
-		for (Module module : SpellUtils.getModules(stack)) {
-			if (module instanceof ModuleShapeTouch) {
+		for (SpellRing ring : SpellUtils.getSpellChains(stack)) {
+			if (ring.getModule() instanceof ModuleShapeTouch) {
 				touch = true;
 				break;
 			}
@@ -78,8 +77,8 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 	public EnumActionResult onItemUse(EntityPlayer player, World world, BlockPos pos, EnumHand hand, EnumFacing side, float par8, float par9, float par10) {
 		ItemStack stack = player.getHeldItem(hand);
 		if (player.isSneaking()) {
-			for (Module module : SpellUtils.getAllModules(stack)) {
-				if (module instanceof IBlockSelectable) {
+			for (SpellRing spellRing : SpellUtils.getSpellChains(stack)) {
+				if (spellRing.getModule() instanceof IBlockSelectable) {
 					player.getEntityData().setTag("selected", NBTUtil.writeBlockState(new NBTTagCompound(), world.getBlockState(pos)));
 					player.swingArm(hand);
 					return EnumActionResult.PASS;
@@ -92,8 +91,8 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 			return EnumActionResult.PASS;
 
 		boolean isOnTouch = false;
-		for (Module module : SpellUtils.getModules(stack))
-			if (module instanceof ModuleShapeTouch) {
+		for (SpellRing spellRing : SpellUtils.getSpellChains(stack))
+			if (spellRing.getModule() instanceof ModuleShapeTouch) {
 				isOnTouch = true;
 				break;
 			}
@@ -116,8 +115,8 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 		ItemStack stack = player.getHeldItem(hand);
 
 		if (player.isSneaking()) {
-			for (Module module : SpellUtils.getAllModules(stack)) {
-				if (module instanceof IBlockSelectable) {
+			for (SpellRing spellRing : SpellUtils.getAllSpellRings(stack)) {
+				if (spellRing.getModule() instanceof IBlockSelectable) {
 					return new ActionResult<>(EnumActionResult.PASS, stack);
 				}
 			}
@@ -150,27 +149,26 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 	@Nonnull
 	@Override
 	public EnumAction getItemUseAction(ItemStack stack) {
-		boolean anyNotContinuous = false;
-		for (Module module : SpellUtils.getModules(stack))
-			if (!(module instanceof IContinuousModule && module.getChargeupTime() <= 0)) {
-				anyNotContinuous = true;
+		boolean anyContinueous = false;
+		for (SpellRing spellRing : SpellUtils.getAllSpellRings(stack))
+			if (spellRing.getModule() instanceof IContinuousModule || spellRing.getChargeUpTime() > 0) {
+				anyContinueous = true;
 				break;
 			}
-		return anyNotContinuous ? EnumAction.NONE : EnumAction.BOW;
+		return anyContinueous ? EnumAction.BOW : EnumAction.NONE;
 	}
 
 	@Override
 	public int getMaxItemUseDuration(ItemStack stack) {
 		int maxChargeUp = 0;
-		boolean anyNotContinuous = false;
-		for (Module module : SpellUtils.getModules(stack)) {
-			if (!(module instanceof IContinuousModule)) {
-				anyNotContinuous = true;
-				if (module.getChargeupTime() > maxChargeUp) maxChargeUp = module.getChargeupTime();
-			}
+		for (SpellRing spellRing : SpellUtils.getAllSpellRings(stack)) {
+			if (spellRing.getModule() instanceof IContinuousModule) {
+				maxChargeUp = 72000;
+			} else if (spellRing.getChargeUpTime() > maxChargeUp)
+				maxChargeUp += spellRing.getChargeUpTime();
 		}
 
-		return anyNotContinuous ? maxChargeUp : 72000;
+		return maxChargeUp;
 	}
 
 	@Nonnull
@@ -187,8 +185,8 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 			return;
 
 		boolean isContinuous = false;
-		for (Module module : SpellUtils.getModules(stack))
-			if (module instanceof IContinuousModule) {
+		for (SpellRing spellRing : SpellUtils.getAllSpellRings(stack))
+			if (spellRing.getModule() instanceof IContinuousModule) {
 				isContinuous = true;
 				break;
 			}
@@ -197,7 +195,6 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 
 		SpellData spell = new SpellData(player.world);
 		spell.processEntity(player, true);
-		spell.processEntity(player, false);
 		SpellUtils.runSpell(stack, spell);
 
 		if (!isContinuous) {
@@ -223,63 +220,100 @@ public class ItemStaff extends ItemMod implements INacreColorable.INacreDecayCol
 	@Nonnull
 	@Override
 	public String getItemStackDisplayName(@Nonnull ItemStack stack) {
+		if (!stack.hasTagCompound())
+			return super.getItemStackDisplayName(stack);
+
 		StringBuilder finalName = null;
-		ArrayList<Module> modules = SpellUtils.getModules(stack);
-		Module lastModule = null;
-		for (Module module : modules) {
-			if (lastModule == null) lastModule = module;
-			if (module != null) {
-				Module tempModule = module;
-				while (tempModule != null) {
+		List<SpellRing> spellChains = SpellUtils.getSpellChains(stack);
+		for (SpellRing spellRing : spellChains) {
 
-					boolean next = false;
-					if (lastModule != module) {
-						lastModule = module;
-						finalName.append(" || ");
-						next = true;
-					}
+			if (finalName == null) {
+				finalName = new StringBuilder();
+			} else finalName.append(" / ");
 
-					if (finalName == null) finalName = new StringBuilder(tempModule.getReadableName());
-					else {
-						if (!next) finalName.append(" -> ");
-						finalName.append(tempModule.getReadableName());
-					}
-
-					tempModule = tempModule.nextModule;
-				}
-			}
+			finalName.append(spellRing.toString());
 		}
 
 		if (finalName == null)
-			return ("" + LibrarianLib.PROXY.translate(this.getUnlocalizedNameInefficiently(stack) + ".name")).trim();
+			return super.getItemStackDisplayName(stack);
 		else return finalName.toString();
 	}
 
 	@Override
-	public void addInformation(ItemStack stack, @Nullable World playerIn, List<String> tooltip, ITooltipFlag advanced) {
-		ArrayList<Module> modules = SpellUtils.getModules(stack);
-		Module lastModule = null;
-		for (Module module : modules) {
-			if (lastModule == null) lastModule = module;
-			if (module != null) {
-				if (module != lastModule) tooltip.add("");
+	@SideOnly(Side.CLIENT)
+	public void addInformation(ItemStack stack, @Nullable World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
+		if (!stack.hasTagCompound())
+			return;
+
+		List<SpellRing> spellRings = SpellUtils.getSpellChains(stack);
+		SpellRing lastRing = null;
+		for (SpellRing ring : spellRings) {
+			if (lastRing == null) lastRing = ring;
+			if (ring != null) {
+				if (ring != lastRing) tooltip.add("");
 				//tooltip.add("Final " + TextFormatting.BLUE + "Mana" + TextFormatting.GRAY + "/" + TextFormatting.RED + "Burnout" + TextFormatting.GRAY + " Cost: " + TextFormatting.BLUE + module.finalManaDrain + TextFormatting.GRAY + "/" + TextFormatting.RED + module.finalBurnoutFill);
-				Module tempModule = module;
+				SpellRing tmpRing = ring;
 				int i = 0;
-				while (tempModule != null) {
-					tooltip.add(StringUtils.repeat("-", i) + "> " + TextFormatting.GRAY + tempModule.getReadableName() + " - " + TextFormatting.BLUE + (int) Math.round(tempModule.getManaDrain() * tempModule.getMultiplier()) + TextFormatting.GRAY + "/" + TextFormatting.RED + (int) Math.round(tempModule.getBurnoutFill() * tempModule.getMultiplier()));
+				while (tmpRing != null) {
+					tooltip.add(
+							StringUtils.repeat("-", i) + "> "
+									+ TextFormatting.GRAY
+									+ tmpRing.getModuleReadableName()
+									+ " - "
+									+ TextFormatting.BLUE
+									+ Math.round(tmpRing.getManaDrain() * tmpRing.getManaMultiplier())
+									+ TextFormatting.GRAY
+									+ "/"
+									+ TextFormatting.RED
+									+ Math.round(tmpRing.getBurnoutFill() * tmpRing.getBurnoutMultiplier()));
 					if (GuiScreen.isShiftKeyDown()) {
-						for (String key : tempModule.attributes.getKeySet())
-							tooltip.add(StringUtils.repeat(" ", i + 1) + " | " + TextFormatting.DARK_GRAY + key + " x" + (int) Math.round(tempModule.attributes.getDouble(key)));
+						for (String key : tmpRing.getInformationTag().getKeySet())
+							tooltip.add(StringUtils.repeat(" ", i + 1) + " | " + TextFormatting.DARK_GRAY + key + " x" + Math.round(tmpRing.getInformationTag().getDouble(key)));
 					}
-					tempModule = tempModule.nextModule;
+					tmpRing = tmpRing.getChildRing();
 					i++;
 				}
 			}
 		}
 
-		if (!GuiScreen.isShiftKeyDown() && !modules.isEmpty()) {
+		if (!GuiScreen.isShiftKeyDown() && !spellRings.isEmpty()) {
 			TooltipHelper.addToTooltip(tooltip, "wizardry.misc.sneak_expanded");
+		}
+
+		if (spellRings.isEmpty() && ItemNBTHelper.getFloat(stack, Constants.NBT.PURITY_OVERRIDE, -1f) < 0) {
+			float purity = getQuality(stack);
+			String desc = super.getUnlocalizedName(stack) + ".";
+			if (purity >= 1) desc += "perfect";
+			else {
+				boolean over = ItemNBTHelper.getInt(stack, Constants.NBT.PURITY, 0) > Constants.NBT.NACRE_PURITY_CONVERSION;
+				if (purity >= 5 / 6.0)
+					if (over)
+						desc += "over_near";
+					else
+						desc += "under_near";
+				else if (over)
+					desc += "overdone";
+				else
+					desc += "underdone";
+
+			}
+			desc += ".desc";
+			String used = LibrarianLib.PROXY.canTranslate(desc) ? desc : desc + "0";
+			if (LibrarianLib.PROXY.canTranslate(used)) {
+				TooltipHelper.addToTooltip(tooltip, used);
+				int i = 0;
+				while (LibrarianLib.PROXY.canTranslate(desc + (++i)))
+					TooltipHelper.addToTooltip(tooltip, desc + i);
+			}
+		} else if (spellRings.isEmpty() && getQuality(stack) > 1f) {
+			String desc = super.getUnlocalizedName(stack) + ".ancient.desc";
+			String used = LibrarianLib.PROXY.canTranslate(desc) ? desc : desc + "0";
+			if (LibrarianLib.PROXY.canTranslate(used)) {
+				TooltipHelper.addToTooltip(tooltip, used);
+				int i = 0;
+				while (LibrarianLib.PROXY.canTranslate(desc + (++i)))
+					TooltipHelper.addToTooltip(tooltip, desc + i);
+			}
 		}
 	}
 

@@ -7,6 +7,8 @@ import com.teamwizardry.librarianlib.features.particle.functions.InterpColorHSV;
 import com.teamwizardry.librarianlib.features.particle.functions.InterpFadeInOut;
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.Constants;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.SpellUtils;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.interp.InterpScale;
 import com.teamwizardry.wizardry.common.entity.EntitySpellProjectile;
@@ -23,7 +25,7 @@ import static com.teamwizardry.wizardry.common.entity.EntitySpellProjectile.DATA
 import static com.teamwizardry.wizardry.common.entity.EntitySpellProjectile.DATA_COLOR2;
 
 /**
- * Created by Saad on 8/25/2016.
+ * Created by Demoniaque on 8/25/2016.
  */
 public class RenderSpellProjectile extends Render<EntitySpellProjectile> {
 
@@ -34,6 +36,14 @@ public class RenderSpellProjectile extends Render<EntitySpellProjectile> {
 	@Override
 	public void doRender(@Nonnull EntitySpellProjectile entity, double x, double y, double z, float entityYaw, float partialTicks) {
 		super.doRender(entity, x, y, z, entityYaw, partialTicks);
+
+		if (entity.spellRing != null)
+			for (SpellRing ring : SpellUtils.getAllSpellRings(entity.spellRing)) {
+				if (ring.overrideParentRenders()) {
+					return;
+				}
+			}
+
 		Color color = new Color(entity.getDataManager().get(DATA_COLOR), true);
 		Color color2 = new Color(entity.getDataManager().get(DATA_COLOR2), true);
 

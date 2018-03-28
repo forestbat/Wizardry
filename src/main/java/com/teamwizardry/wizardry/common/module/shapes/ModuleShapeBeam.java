@@ -2,18 +2,16 @@ package com.teamwizardry.wizardry.common.module.shapes;
 
 import com.teamwizardry.wizardry.api.spell.IContinuousModule;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.ModuleShape;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
-import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.RayTrace;
 import com.teamwizardry.wizardry.client.fx.LibParticles;
-import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierExtendRange;
 import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreasePotency;
+import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreaseRange;
 import net.minecraft.entity.Entity;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -22,10 +20,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
+import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.LOOK;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleShapeBeam extends ModuleShape implements IContinuousModule {
@@ -38,26 +36,27 @@ public class ModuleShapeBeam extends ModuleShape implements IContinuousModule {
 
 	@Override
 	public ModuleModifier[] applicableModifiers() {
-		return new ModuleModifier[]{new ModuleModifierExtendRange(), new ModuleModifierIncreasePotency()};
+		return new ModuleModifier[]{new ModuleModifierIncreaseRange(), new ModuleModifierIncreasePotency()};
 	}
 
 	@Override
-	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean ignoreResult() {
+		return true;
+	}
+
+	@Override
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) throws NullPointerException {
 		World world = spell.world;
-		float yaw = spell.getData(YAW, 0F);
-		float pitch = spell.getData(PITCH, 0F);
 		Vec3d look = spell.getData(LOOK);
-		Vec3d position = spell.getData(ORIGIN);
-		Entity caster = spell.getData(CASTER);
-		float strength = spell.getData(STRENGTH, 1f);
+		Vec3d position = spell.getOrigin();
+		Entity caster = spell.getCaster();
 
-		if (position == null || look == null) return false;
+		if (look == null || position == null) return false;
 
-		double range = getModifier(spell, Attributes.RANGE, 10, 100);
-		double potency = 20 - getModifier(spell, Attributes.POTENCY, 1, 19);
+		double range = spellRing.getAttributeValue(AttributeRegistry.RANGE, spell);
+		double potency = 30 - spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell);
 
-		setCostMultiplier(this, 0.1);
+		spellRing.multiplyMultiplierForAll((float) (potency / 25.0 * range / 75.0));
 
 		RayTraceResult trace = new RayTrace(world, look, position, range)
 				.setSkipEntity(caster)
@@ -65,42 +64,26 @@ public class ModuleShapeBeam extends ModuleShape implements IContinuousModule {
 				.setIgnoreBlocksWithoutBoundingBoxes(true)
 				.trace();
 
-		Vec3d vec = trace.hitVec == null ? look.scale(range) : trace.hitVec;
+		spell.processTrace(trace, look.scale(range));
 
-		if (trace.typeOfHit == RayTraceResult.Type.ENTITY)
-			spell.processEntity(trace.entityHit, false);
-		else if (trace.typeOfHit == RayTraceResult.Type.BLOCK)
-			spell.processBlock(trace.getBlockPos(), trace.sideHit, trace.hitVec);
-		else spell.processBlock(new BlockPos(vec), null, vec);
+		sendRenderPacket(spell, spellRing);
+		if (spell.world.getTotalWorldTime() % potency == 0) {
+			if (spellRing.getChildRing() != null) {
+				spellRing.getChildRing().runSpellRing(spell);
+			}
+		}
 
-		return ((nextModule == null || nextModule instanceof IContinuousModule) || RandUtil.nextInt((int) potency) == 0) && runNextModule(spell);
+		return true;
 	}
-
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		float yaw = spell.getData(YAW, 0F);
-		Vec3d position = spell.getData(ORIGIN);
-		Entity caster = spell.getData(CASTER);
-		Vec3d target = spell.getData(TARGET_HIT);
+		Vec3d target = spell.getTargetWithFallback();
 
-		if (position == null) return;
 		if (target == null) return;
 
-		Vec3d origin = position;
-		if (caster != null) {
-			float offX = 0.5f * (float) Math.sin(Math.toRadians(-90.0f - yaw));
-			float offZ = 0.5f * (float) Math.cos(Math.toRadians(-90.0f - yaw));
-			origin = new Vec3d(offX, 0, offZ).add(position);
-		}
-		LibParticles.SHAPE_BEAM(world, target, origin, getPrimaryColor());
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleShapeBeam());
+		LibParticles.SHAPE_BEAM(world, target, spell.getOriginHand(), spellRing.getPrimaryColor());
 	}
 }

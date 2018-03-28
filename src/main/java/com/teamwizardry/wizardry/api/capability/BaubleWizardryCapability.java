@@ -13,7 +13,7 @@ import net.minecraft.util.math.MathHelper;
 import javax.annotation.Nullable;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public class BaubleWizardryCapability implements IWizardryCapability {
 
@@ -90,18 +90,18 @@ public class BaubleWizardryCapability implements IWizardryCapability {
 	}
 
 	@Override
-	public NBTTagCompound saveNBTData() {
+	public NBTTagCompound serializeNBT() {
 		return stack.getTagCompound();
 	}
 
 	@Override
-	public void loadNBTData(NBTTagCompound compound) {
+	public void deserializeNBT(NBTTagCompound compound) {
 		stack.setTagCompound(compound);
 	}
 
 	@Override
 	public void dataChanged(Entity entity) {
 		if ((entity != null) && entity instanceof EntityPlayer && !entity.getEntityWorld().isRemote)
-			PacketHandler.NETWORK.sendTo(new PacketUpdateCaps(saveNBTData()), (EntityPlayerMP) entity);
+			PacketHandler.NETWORK.sendTo(new PacketUpdateCaps(serializeNBT()), (EntityPlayerMP) entity);
 	}
 }

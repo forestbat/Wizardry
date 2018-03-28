@@ -1,9 +1,9 @@
 package com.teamwizardry.wizardry.api.spell;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public interface ILingeringModule {
 
-	int lingeringTime(SpellData spell);
+	int getLingeringTime(SpellData spell, SpellRing spellRing);
 }

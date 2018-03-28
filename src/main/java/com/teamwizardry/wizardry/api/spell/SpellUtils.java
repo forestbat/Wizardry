@@ -1,12 +1,9 @@
 package com.teamwizardry.wizardry.api.spell;
 
 import com.teamwizardry.librarianlib.features.helpers.ItemNBTHelper;
-import com.teamwizardry.wizardry.api.ConfigValues;
 import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.item.BaublesSupport;
-import com.teamwizardry.wizardry.api.item.INacreColorable;
-import com.teamwizardry.wizardry.api.spell.module.Module;
-import com.teamwizardry.wizardry.api.spell.module.ModuleRegistry;
+import com.teamwizardry.wizardry.api.util.ColorUtils;
 import com.teamwizardry.wizardry.init.ModItems;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -15,10 +12,37 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
 import javax.annotation.Nonnull;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SpellUtils {
+
+	public static Color getAverageSpellColor(List<SpellRing> spellChains) {
+		List<Color> colorSet = new ArrayList<>();
+
+		NBTTagList list = new NBTTagList();
+		for (SpellRing spellRing : spellChains) {
+			colorSet.add(spellRing.getPrimaryColor());
+			//colorSet.add(spellRing.getSecondaryColor());
+			list.appendTag(spellRing.serializeNBT());
+		}
+
+		if (colorSet.size() == 1) return colorSet.get(0);
+
+		Color lastColor = ColorUtils.mixColors(colorSet);
+
+		boolean r = lastColor.getRed() == 0;
+		boolean g = lastColor.getGreen() == 0;
+		boolean b = lastColor.getBlue() == 0;
+
+		if (g ? !(b && r) : b) return lastColor;
+		if (lastColor.getRed() / lastColor.getBlue() < 0.8 || lastColor.getRed() / lastColor.getGreen() < 0.8) {
+			// todo: rebalance the color so its not white-ish
+		}
+
+		return lastColor;
+	}
 
 	public static void runSpell(@Nonnull ItemStack spellHolder, @Nonnull SpellData data) {
 		if (data.world.isRemote) return;
@@ -27,107 +51,78 @@ public class SpellUtils {
 		if (caster != null && caster instanceof EntityLivingBase && BaublesSupport.getItem((EntityLivingBase) caster, ModItems.CREATIVE_HALO, ModItems.FAKE_HALO, ModItems.REAL_HALO).isEmpty())
 			return;
 
-		if (spellHolder.getItem() instanceof INacreColorable) {
-			float purity = ((INacreColorable) spellHolder.getItem()).getQuality(spellHolder);
-			double multiplier;
-			if (purity >= 1f) multiplier = ConfigValues.perfectPearlMultiplier * purity;
-			else if (purity <= ConfigValues.damagedPearlMultiplier) multiplier = ConfigValues.damagedPearlMultiplier;
-			else {
-				double base = purity - 1;
-				multiplier = 1 - (base * base * base * base);
-			}
-
-			for (Module module : SpellUtils.getAllModules(spellHolder))
-				module.setMultiplier(module.getMultiplier() * multiplier);
-
-		}
-
-		for (Module module : getModules(spellHolder)) {
-			module.castSpell(data);
+		for (SpellRing spellRing : getSpellChains(spellHolder)) {
+			spellRing.runSpellRing(data);
 		}
 	}
 
-	public static ArrayList<ArrayList<Module>> getModules(@Nonnull List<Module> moduleHeads) {
-		ArrayList<ArrayList<Module>> modules = new ArrayList<>();
-
-		for (Module module : moduleHeads) modules.add(getAllModules(module));
-
-		return modules;
-	}
-
-	public static ArrayList<Module> getModules(@Nonnull ItemStack spellHolder) {
-		ArrayList<Module> modules = new ArrayList<>();
+	/**
+	 * Gets all SpellRings that exist in an ItemStack with the children of each ring inside
+	 * of them, compressed essentially.
+	 * This basically returns the head of each spellData chain only.
+	 *
+	 * @param spellHolder The ItemStack containing the spells.
+	 * @return List with all spellData ring heads in the stack.
+	 */
+	public static List<SpellRing> getSpellChains(@Nonnull ItemStack spellHolder) {
+		List<SpellRing> rings = new ArrayList<>();
 
 		NBTTagList list = ItemNBTHelper.getList(spellHolder, Constants.NBT.SPELL, net.minecraftforge.common.util.Constants.NBT.TAG_COMPOUND);
-		if (list == null) return modules;
+		if (list == null) return rings;
 
-		return getModules(list);
+		return getSpellChains(list);
 	}
 
-	public static ArrayList<Module> getModules(@Nonnull NBTTagCompound compound) {
-		if (compound.hasKey(Constants.NBT.SPELL))
-			return getModules(compound.getTagList(Constants.NBT.SPELL, net.minecraftforge.common.util.Constants.NBT.TAG_COMPOUND));
-		else return new ArrayList<>();
-	}
-
-	public static ArrayList<Module> getModules(@Nonnull NBTTagList list) {
-		ArrayList<Module> modules = new ArrayList<>();
+	/**
+	 * Gets all spellData ring heads (containing children inside of each).
+	 *
+	 * @param list NBTTagList where each tag contains a whole SpellRing chain.
+	 * @return List with the spellData ring heads.
+	 */
+	public static List<SpellRing> getSpellChains(@Nonnull NBTTagList list) {
+		ArrayList<SpellRing> rings = new ArrayList<>();
 		for (int i = 0; i < list.tagCount(); i++) {
 			NBTTagCompound compound = list.getCompoundTagAt(i);
-			Module module = ModuleRegistry.INSTANCE.getModule(compound.getString("id"));
-			if (module == null) continue;
-			module = module.copy();
-			module.deserializeNBT(compound);
-			modules.add(module);
+			SpellRing ring = SpellRing.deserializeRing(compound);
+			if (ring == null) continue;
+			rings.add(ring);
 		}
-		return modules;
+		return rings;
 	}
 
-	public static ArrayList<Module> getAllModules(@Nonnull NBTTagCompound compound) {
-		ArrayList<Module> modules = new ArrayList<>();
-		ArrayList<Module> heads = getModules(compound);
-		for (Module module : heads) {
-			Module tempModule = module;
-			while (tempModule != null) {
-				modules.add(tempModule);
-				tempModule = tempModule.nextModule;
+	/**
+	 * Gets all SpellRings children from the passed spellRing object with itself included.
+	 *
+	 * @param spellRing The SpellRing to uncompress.
+	 * @return List with all spellData rings that exist in the spellRing including itself.
+	 */
+	public static List<SpellRing> getAllSpellRings(@Nonnull SpellRing spellRing) {
+		List<SpellRing> rings = new ArrayList<>();
+		SpellRing tempSpellRing = spellRing;
+		while (tempSpellRing != null) {
+			rings.add(tempSpellRing);
+			tempSpellRing = tempSpellRing.getChildRing();
+		}
+		return rings;
+	}
+
+	/**
+	 * Gets all SpellRings that exist in an ItemStack with children of each ring included
+	 * in the list returned.
+	 *
+	 * @param spellHolder The ItemStack containing the spellData.
+	 * @return List with all spellData rings that exist in the stack.
+	 */
+	public static List<SpellRing> getAllSpellRings(@Nonnull ItemStack spellHolder) {
+		List<SpellRing> rings = new ArrayList<>();
+		List<SpellRing> heads = getSpellChains(spellHolder);
+		for (SpellRing spellRing : heads) {
+			SpellRing tempSpellRing = spellRing;
+			while (tempSpellRing != null) {
+				rings.add(tempSpellRing);
+				tempSpellRing = tempSpellRing.getChildRing();
 			}
 		}
-		return modules;
-	}
-
-	public static ArrayList<Module> getAllModules(@Nonnull Module module) {
-		ArrayList<Module> modules = new ArrayList<>();
-		Module tempModule = module;
-		while (tempModule != null) {
-			modules.add(tempModule);
-			tempModule = tempModule.nextModule;
-		}
-		return modules;
-	}
-
-	public static ArrayList<Module> getAllModules(@Nonnull ArrayList<Module> modules) {
-		ArrayList<Module> modules1 = new ArrayList<>();
-		for (Module module : modules) {
-			Module tempModule = module;
-			while (tempModule != null) {
-				modules1.add(tempModule);
-				tempModule = tempModule.nextModule;
-			}
-		}
-		return modules1;
-	}
-
-	public static ArrayList<Module> getAllModules(@Nonnull ItemStack spellHolder) {
-		ArrayList<Module> modules = new ArrayList<>();
-		ArrayList<Module> heads = getModules(spellHolder);
-		for (Module module : heads) {
-			Module tempModule = module;
-			while (tempModule != null) {
-				modules.add(tempModule);
-				tempModule = tempModule.nextModule;
-			}
-		}
-		return modules;
+		return rings;
 	}
 }

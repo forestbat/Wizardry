@@ -9,9 +9,9 @@ import com.teamwizardry.wizardry.api.capability.CustomWizardryCapability;
 import com.teamwizardry.wizardry.api.capability.WizardryCapabilityProvider;
 import com.teamwizardry.wizardry.api.item.IExplodable;
 import com.teamwizardry.wizardry.api.item.IInfusable;
-import com.teamwizardry.wizardry.api.item.INacreColorable;
+import com.teamwizardry.wizardry.api.item.INacreProduct;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.SpellUtils;
-import com.teamwizardry.wizardry.api.spell.module.Module;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
@@ -29,13 +29,12 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by Saad on 6/28/2016.
+ * Created by Demoniaque on 6/28/2016.
  */
-public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, INacreColorable {
+public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, INacreProduct {
 
 	public ItemNacrePearl() {
 		super("nacre_pearl");
@@ -74,7 +73,7 @@ public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, 
 			return "flawed";
 		else if (quality > 0.2)
 			return "drained";
-		return "waste";
+		return "wasted";
 	}
 
 	@Override
@@ -92,30 +91,14 @@ public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, 
 			return super.getItemStackDisplayName(stack);
 
 		StringBuilder finalName = null;
-		ArrayList<Module> modules = SpellUtils.getModules(stack);
-		Module lastModule = null;
-		for (Module module : modules) {
-			if (lastModule == null) lastModule = module;
-			if (module != null) {
-				Module tempModule = module;
-				while (tempModule != null) {
+		List<SpellRing> spellChains = SpellUtils.getSpellChains(stack);
+		for (SpellRing spellRing : spellChains) {
 
-					boolean next = false;
-					if (lastModule != module) {
-						lastModule = module;
-						finalName.append(" || ");
-						next = true;
-					}
+			if (finalName == null) {
+				finalName = new StringBuilder();
+			} else finalName.append(" / ");
 
-					if (finalName == null) finalName = new StringBuilder(tempModule.getReadableName());
-					else {
-						if (!next) finalName.append(" -> ");
-						finalName.append(tempModule.getReadableName());
-					}
-
-					tempModule = tempModule.nextModule;
-				}
-			}
+			finalName.append(spellRing.toString());
 		}
 
 		if (finalName == null)
@@ -129,32 +112,42 @@ public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, 
 		if (!stack.hasTagCompound())
 			return;
 
-		ArrayList<Module> modules = SpellUtils.getModules(stack);
-		Module lastModule = null;
-		for (Module module : modules) {
-			if (lastModule == null) lastModule = module;
-			if (module != null) {
-				if (module != lastModule) tooltip.add("");
+		List<SpellRing> spellRings = SpellUtils.getSpellChains(stack);
+		SpellRing lastRing = null;
+		for (SpellRing ring : spellRings) {
+			if (lastRing == null) lastRing = ring;
+			if (ring != null) {
+				if (ring != lastRing) tooltip.add("");
 				//tooltip.add("Final " + TextFormatting.BLUE + "Mana" + TextFormatting.GRAY + "/" + TextFormatting.RED + "Burnout" + TextFormatting.GRAY + " Cost: " + TextFormatting.BLUE + module.finalManaDrain + TextFormatting.GRAY + "/" + TextFormatting.RED + module.finalBurnoutFill);
-				Module tempModule = module;
+				SpellRing tmpRing = ring;
 				int i = 0;
-				while (tempModule != null) {
-					tooltip.add(StringUtils.repeat("-", i) + "> " + TextFormatting.GRAY + tempModule.getReadableName() + " - " + TextFormatting.BLUE + (int) Math.round(tempModule.getManaDrain() * tempModule.getMultiplier()) + TextFormatting.GRAY + "/" + TextFormatting.RED + (int) Math.round(tempModule.getBurnoutFill() * tempModule.getMultiplier()));
+				while (tmpRing != null) {
+					tooltip.add(
+							StringUtils.repeat("-", i) + "> "
+									+ TextFormatting.GRAY
+									+ tmpRing.getModuleReadableName()
+									+ " - "
+									+ TextFormatting.BLUE
+									+ Math.round(tmpRing.getManaDrain() * tmpRing.getManaMultiplier())
+									+ TextFormatting.GRAY
+									+ "/"
+									+ TextFormatting.RED
+									+ Math.round(tmpRing.getBurnoutFill() * tmpRing.getBurnoutMultiplier()));
 					if (GuiScreen.isShiftKeyDown()) {
-						for (String key : tempModule.attributes.getKeySet())
-							tooltip.add(StringUtils.repeat(" ", i + 1) + " | " + TextFormatting.DARK_GRAY + key + " x" + (int) Math.round(tempModule.attributes.getDouble(key)));
+						for (String key : tmpRing.getInformationTag().getKeySet())
+							tooltip.add(StringUtils.repeat(" ", i + 1) + " | " + TextFormatting.DARK_GRAY + key + " x" + Math.round(tmpRing.getInformationTag().getDouble(key)));
 					}
-					tempModule = tempModule.nextModule;
+					tmpRing = tmpRing.getChildRing();
 					i++;
 				}
 			}
 		}
 
-		if (!GuiScreen.isShiftKeyDown() && !modules.isEmpty()) {
+		if (!GuiScreen.isShiftKeyDown() && !spellRings.isEmpty()) {
 			TooltipHelper.addToTooltip(tooltip, "wizardry.misc.sneak_expanded");
 		}
 
-		if (modules.isEmpty() && ItemNBTHelper.getFloat(stack, Constants.NBT.PURITY_OVERRIDE, -1f) < 0) {
+		if (spellRings.isEmpty() && ItemNBTHelper.getFloat(stack, Constants.NBT.PURITY_OVERRIDE, -1f) < 0) {
 			float purity = getQuality(stack);
 			String desc = super.getUnlocalizedName(stack) + ".";
 			if (purity >= 1) desc += "perfect";
@@ -165,11 +158,10 @@ public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, 
 						desc += "over_near";
 					else
 						desc += "under_near";
+				else if (over)
+					desc += "overdone";
 				else
-					if (over)
-						desc += "overdone";
-					else
-						desc += "underdone";
+					desc += "underdone";
 
 			}
 			desc += ".desc";
@@ -180,7 +172,7 @@ public class ItemNacrePearl extends ItemMod implements IInfusable, IExplodable, 
 				while (LibrarianLib.PROXY.canTranslate(desc + (++i)))
 					TooltipHelper.addToTooltip(tooltip, desc + i);
 			}
-		} else if (modules.isEmpty() && getQuality(stack) > 1f) {
+		} else if (spellRings.isEmpty() && getQuality(stack) > 1f) {
 			String desc = super.getUnlocalizedName(stack) + ".ancient.desc";
 			String used = LibrarianLib.PROXY.canTranslate(desc) ? desc : desc + "0";
 			if (LibrarianLib.PROXY.canTranslate(used)) {

@@ -1,8 +1,8 @@
 package com.teamwizardry.wizardry.common.module.effects;
 
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
@@ -31,10 +31,8 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
-
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectThrive extends ModuleEffect {
@@ -51,32 +49,32 @@ public class ModuleEffectThrive extends ModuleEffect {
 	}
 
 	@Override
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		BlockPos targetPos = spell.getData(BLOCK_HIT);
-		Entity targetEntity = spell.getData(ENTITY_HIT);
-		Entity caster = spell.getData(CASTER);
-		Vec3d pos = spell.getData(TARGET_HIT);
+		BlockPos targetPos = spell.getTargetPos();
+		Entity targetEntity = spell.getVictim();
+		Entity caster = spell.getCaster();
+		Vec3d pos = spell.getTarget();
 
 		if (pos != null)
 			spell.world.playSound(null, new BlockPos(pos), ModSounds.HEAL, SoundCategory.NEUTRAL, 1, 1);
 		if (targetEntity instanceof EntityLivingBase) {
-			double strength = getModifier(spell, Attributes.POTENCY, 3, 20) / 10.0;
+			double strength = spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell) / 10.0;
 
-			if (!tax(this, spell)) return false;
+			if (!spellRing.taxCaster(spell)) return false;
 
 			((EntityLivingBase) targetEntity).heal((float) strength);
 		}
 
 		if (targetPos != null) {
 			if (world.getBlockState(targetPos).getBlock() instanceof IGrowable) {
-				if (!tax(this, spell)) return false;
+				if (!spellRing.taxCaster(spell)) return false;
 				if (caster == null || (caster instanceof EntityPlayer && BlockUtils.hasEditPermission(targetPos, (EntityPlayerMP) caster)))
 					ItemDye.applyBonemeal(new ItemStack(Items.DYE), world, targetPos);
 			} else if (world.getBlockState(targetPos).getBlock() instanceof IPlantable) {
 				IBlockState state = world.getBlockState(targetPos);
 				Block block = state.getBlock();
-				if (!tax(this, spell)) return false;
+				if (!spellRing.taxCaster(spell)) return false;
 				if (caster == null || (caster instanceof EntityPlayer && BlockUtils.hasEditPermission(targetPos, (EntityPlayerMP) caster))) {
 					while (world.getBlockState(targetPos.up()).getBlock() == block) {
 						targetPos = targetPos.up();
@@ -92,17 +90,11 @@ public class ModuleEffectThrive extends ModuleEffect {
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Vec3d position = spell.getData(TARGET_HIT);
+		Vec3d position = spell.getTarget();
 
 		if (position == null) return;
 		LibParticles.EFFECT_REGENERATE(world, position, getPrimaryColor());
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectThrive());
 	}
 }

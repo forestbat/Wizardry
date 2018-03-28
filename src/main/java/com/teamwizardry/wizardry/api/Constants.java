@@ -1,7 +1,7 @@
 package com.teamwizardry.wizardry.api;
 
 /**
- * Created by Saad on 6/14/2016.
+ * Created by Demoniaque on 6/14/2016.
  */
 public class Constants {
 
@@ -57,7 +57,7 @@ public class Constants {
 	}
 
 	public static class NBT {
-		public static final String SPELL = "spell";
+		public static final String SPELL = "spellData";
 		public static final String TAG_OVERLAY = "overlay";
 		public static final String FAIRY_INSIDE = "fairy_inside";
 		public static final String FAIRY_COLOR = "fairy_color";

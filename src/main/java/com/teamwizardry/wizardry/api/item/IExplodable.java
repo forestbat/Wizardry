@@ -1,19 +1,12 @@
 package com.teamwizardry.wizardry.api.item;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
 import com.teamwizardry.librarianlib.features.utilities.client.ClientRunnable;
 import com.teamwizardry.wizardry.client.fx.LibParticles;
-
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -22,7 +15,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Created by Saad on 6/30/2016.
+ * Created by Demoniaque on 6/30/2016.
  */
 public interface IExplodable {
 

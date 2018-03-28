@@ -8,14 +8,14 @@ import com.teamwizardry.librarianlib.features.particle.functions.InterpFadeInOut
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.interp.InterpScale;
-import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierExtendTime;
+import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreaseDuration;
 import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreasePotency;
 import com.teamwizardry.wizardry.init.ModPotions;
 import net.minecraft.entity.Entity;
@@ -33,13 +33,36 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
-
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectTimeSlow extends ModuleEffect {
+
+	@SubscribeEvent
+	public static void skipTick(LivingEvent.LivingUpdateEvent event) {
+		if (event.getEntity().getEntityData().hasKey("skip_tick")
+				&& event.getEntity().getEntityData().hasKey("skip_tick_interval")
+				&& event.getEntity().getEntityData().hasKey("skip_tick_interval_save")) {
+			int tickCountdown = event.getEntity().getEntityData().getInteger("skip_tick");
+			int tickInterval = event.getEntity().getEntityData().getInteger("skip_tick_interval");
+
+			if (tickInterval <= 0) {
+				event.getEntity().getEntityData().setInteger("skip_tick_interval", event.getEntity().getEntityData().getInteger("skip_tick_interval_save"));
+
+				if (tickCountdown <= 0) {
+					event.getEntity().getEntityData().removeTag("skip_tick");
+					event.getEntity().getEntityData().removeTag("skip_tick_interval");
+					event.getEntity().getEntityData().removeTag("skip_tick_interval_save");
+				} else {
+					event.getEntity().getEntityData().setInteger("skip_tick", --tickCountdown);
+					event.setCanceled(true);
+				}
+			} else {
+				event.getEntity().getEntityData().setInteger("skip_tick_interval", --tickInterval);
+			}
+		}
+	}
 
 	@Nonnull
 	@Override
@@ -49,21 +72,21 @@ public class ModuleEffectTimeSlow extends ModuleEffect {
 
 	@Override
 	public ModuleModifier[] applicableModifiers() {
-		return new ModuleModifier[]{new ModuleModifierIncreasePotency(), new ModuleModifierExtendTime()};
+		return new ModuleModifier[]{new ModuleModifierIncreasePotency(), new ModuleModifierIncreaseDuration()};
 	}
 
 	@Override
 	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		BlockPos targetPos = spell.getData(BLOCK_HIT);
-		Entity targetEntity = spell.getData(ENTITY_HIT);
-		Entity caster = spell.getData(CASTER);
+		BlockPos targetPos = spell.getTargetPos();
+		Entity targetEntity = spell.getVictim();
+		Entity caster = spell.getCaster();
 
 		if (targetEntity instanceof EntityLivingBase) {
-			double strength = getModifier(spell, Attributes.POTENCY, 2, 20);
-			double duration = getModifier(spell, Attributes.DURATION, 5, 64) * 10;
-			if (!tax(this, spell)) return false;
+			double strength = spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell);
+			double duration = spellRing.getAttributeValue(AttributeRegistry.DURATION, spell) * 10;
+			if (!spellRing.taxCaster(spell)) return false;
 
 			((EntityLivingBase) targetEntity).addPotionEffect(new PotionEffect(ModPotions.TIME_SLOW, (int) duration, (int) strength, true, false));
 		}
@@ -72,9 +95,9 @@ public class ModuleEffectTimeSlow extends ModuleEffect {
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Vec3d position = spell.getData(TARGET_HIT);
+		Vec3d position = spell.getTarget();
 
 		if (position == null) return;
 
@@ -103,36 +126,5 @@ public class ModuleEffectTimeSlow extends ModuleEffect {
 			//glitter.setPositionFunction(new InterpSlowDown(Vec3d.ZERO, new Vec3d(0, RandUtil.nextDouble(-1, 1), 0)));
 			//glitter.setPositionFunction(new InterpBezier3D(Vec3d.ZERO, position.subtract(dest), dest.scale(2), new Vec3d(position.x, radius, position.z)));
 		});
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectTimeSlow());
-	}
-
-	@SubscribeEvent
-	public static void skipTick(LivingEvent.LivingUpdateEvent event) {
-		if (event.getEntity().getEntityData().hasKey("skip_tick")
-				&& event.getEntity().getEntityData().hasKey("skip_tick_interval")
-				&& event.getEntity().getEntityData().hasKey("skip_tick_interval_save")) {
-			int tickCountdown = event.getEntity().getEntityData().getInteger("skip_tick");
-			int tickInterval = event.getEntity().getEntityData().getInteger("skip_tick_interval");
-
-			if (tickInterval <= 0) {
-				event.getEntity().getEntityData().setInteger("skip_tick_interval", event.getEntity().getEntityData().getInteger("skip_tick_interval_save"));
-
-				if (tickCountdown <= 0) {
-					event.getEntity().getEntityData().removeTag("skip_tick");
-					event.getEntity().getEntityData().removeTag("skip_tick_interval");
-					event.getEntity().getEntityData().removeTag("skip_tick_interval_save");
-				} else {
-					event.getEntity().getEntityData().setInteger("skip_tick", --tickCountdown);
-					event.setCanceled(true);
-				}
-			} else {
-				event.getEntity().getEntityData().setInteger("skip_tick_interval", --tickInterval);
-			}
-		}
 	}
 }

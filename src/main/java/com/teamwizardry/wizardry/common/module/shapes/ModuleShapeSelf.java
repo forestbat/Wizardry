@@ -7,8 +7,7 @@ import com.teamwizardry.librarianlib.features.particle.functions.InterpFadeInOut
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.ModuleShape;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
 import com.teamwizardry.wizardry.api.util.RandUtil;
@@ -21,10 +20,8 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.CASTER;
-
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleShapeSelf extends ModuleShape {
@@ -36,32 +33,26 @@ public class ModuleShapeSelf extends ModuleShape {
 	}
 
 	@Override
-	public boolean run(@Nonnull SpellData spell) {
-		Entity caster = spell.getData(CASTER);
-		Entity target = spell.getData(DefaultKeys.ENTITY_HIT);
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Entity caster = spell.getCaster();
+		if (caster == null) return false;
 
-		Entity finalEntity = isHead() ? caster == null ? target : caster : target;
+		if (!spellRing.taxCaster(spell)) return false;
+		spell.processEntity(caster, false);
 
-		if (finalEntity == null) return true;
-
-		spell.processEntity(finalEntity, false);
-
-		return runNextModule(spell);
+		return true;
 	}
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
-		Entity caster = spell.getData(CASTER);
-		Entity target = spell.getData(DefaultKeys.ENTITY_HIT);
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Entity caster = spell.getCaster();
 
-		Entity finalEntity = isHead() ? caster == null ? target : caster : target;
-
-		if (finalEntity == null) return;
+		if (caster == null) return;
 
 		ParticleBuilder glitter = new ParticleBuilder(1);
 		glitter.setRender(new ResourceLocation(Wizardry.MODID, Constants.MISC.SPARKLE_BLURRED));
-		ParticleSpawner.spawn(glitter, spell.world, new InterpCircle(finalEntity.getPositionVector().addVector(0, finalEntity.height / 2.0, 0), new Vec3d(0, 1, 0), 1, 10), 50, RandUtil.nextInt(10, 15), (aFloat, particleBuilder) -> {
+		ParticleSpawner.spawn(glitter, spell.world, new InterpCircle(caster.getPositionVector().addVector(0, caster.height / 2.0, 0), new Vec3d(0, 1, 0), 1, 10), 50, RandUtil.nextInt(10, 15), (aFloat, particleBuilder) -> {
 			if (RandUtil.nextBoolean()) {
 				glitter.setColor(getPrimaryColor());
 				glitter.setMotion(new Vec3d(0, RandUtil.nextDouble(0.01, 0.1), 0));
@@ -76,11 +67,5 @@ public class ModuleShapeSelf extends ModuleShape {
 			glitter.setScaleFunction(new InterpScale(1, 0));
 		});
 
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleShapeSelf());
 	}
 }

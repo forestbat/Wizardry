@@ -1,30 +1,22 @@
 package com.teamwizardry.wizardry.api.spell.module;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.teamwizardry.librarianlib.core.LibrarianLib;
-import com.teamwizardry.librarianlib.features.helpers.ItemNBTHelper;
 import com.teamwizardry.librarianlib.features.network.PacketHandler;
-import com.teamwizardry.wizardry.Wizardry;
-import com.teamwizardry.wizardry.api.capability.CapManager;
 import com.teamwizardry.wizardry.api.events.SpellCastEvent;
-import com.teamwizardry.wizardry.api.item.BaublesSupport;
 import com.teamwizardry.wizardry.api.spell.ILingeringModule;
 import com.teamwizardry.wizardry.api.spell.SpellData;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.attribute.AttributeModifier;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.attribute.Operation;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRange;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry.Attribute;
+import com.teamwizardry.wizardry.api.util.DefaultHashMap;
 import com.teamwizardry.wizardry.common.core.SpellTicker;
 import com.teamwizardry.wizardry.common.network.PacketRenderSpell;
-import com.teamwizardry.wizardry.init.ModItems;
-import kotlin.Pair;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.util.math.Vec3d;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -33,73 +25,38 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.CASTER;
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.MAX_TIME;
+import java.util.Map;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
-public abstract class Module implements INBTSerializable<NBTTagCompound> {
+public abstract class Module {
 
-	/**
-	 * Stores the actual modifier data
-	 */
-	@Nonnull
-	public NBTTagCompound attributes = new NBTTagCompound();
-	/**
-	 * Temporarily stores modifiers before spell construction
-	 */
-	@Nonnull
-	public List<AttributeModifier> modifiersToApply = new ArrayList<>();
-	/**
-	 * Stores a list of attribute modifiers to use in spell construction, used by Modifier modules
-	 */
-	@Nonnull
-	public List<AttributeModifier> modifiers = new ArrayList<>();
-	@Nullable
-	public Module prevModule = null;
-	@Nullable
-	public Module nextModule = null;
-	private Color primaryColor = null;
-	private Color secondaryColor = null;
-	private int cooldownTime = 0;
-	private int chargeupTime = 0;
-	private ItemStack itemStack = ItemStack.EMPTY;
-	private double multiplier = 1;
-	private boolean isHead = false;
+	protected final List<AttributeModifier> attributes = new ArrayList<>();
+	protected Map<Attribute, AttributeRange> attributeRanges = new DefaultHashMap<>(AttributeRange.BACKUP);
+	protected Color primaryColor;
+	protected Color secondaryColor;
+	protected ItemStack itemStack;
 
-	public Module() {
+	@Nullable
+	public static Module deserialize(NBTTagString tagString) {
+		return ModuleRegistry.INSTANCE.getModule(tagString.getString());
 	}
 
-	public static void processColor(Module module) {
-		if (module == null) return;
-
-		if (module.nextModule == null) {
-			if (module.getPrimaryColor() == null) {
-				module.setPrimaryColor(Color.WHITE);
-			}
-			if (module.getSecondaryColor() == null) {
-				module.setSecondaryColor(Color.WHITE);
-			}
-			return;
-		}
-
-		processColor(module.nextModule);
-
-		if (module.getPrimaryColor() == null) {
-			module.setPrimaryColor(module.nextModule.getPrimaryColor());
-		}
-		if (module.getSecondaryColor() == null) module.setSecondaryColor(module.nextModule.getSecondaryColor());
-
+	@Nullable
+	public static Module deserialize(String id) {
+		return ModuleRegistry.INSTANCE.getModule(id);
 	}
 
-	@Override
-	public String toString() {
-		return getID();
+	public final void init(ItemStack itemStack,
+	                       Color primaryColor,
+	                       Color secondaryColor,
+	                       DefaultHashMap<Attribute, AttributeRange> attributeRanges) {
+		this.itemStack = itemStack;
+		this.primaryColor = primaryColor;
+		this.secondaryColor = secondaryColor;
+		this.attributeRanges = attributeRanges;
 	}
 
 	/**
@@ -118,11 +75,16 @@ public abstract class Module implements INBTSerializable<NBTTagCompound> {
 	@Nonnull
 	public abstract String getID();
 
+	@Override
+	public final String toString() {
+		return getID();
+	}
+
 	/**
 	 * Represents the readable name of this module. Viewed in the worktable.
 	 */
 	@Nonnull
-	public String getReadableName() {
+	public final String getReadableName() {
 		return LibrarianLib.PROXY.translate(getNameKey());
 	}
 
@@ -130,7 +92,7 @@ public abstract class Module implements INBTSerializable<NBTTagCompound> {
 	 * Represents the readable name of this module. Viewed in the worktable.
 	 */
 	@Nonnull
-	public String getNameKey() {
+	public final String getNameKey() {
 		return "wizardry.spell." + getID() + ".name";
 	}
 
@@ -138,16 +100,8 @@ public abstract class Module implements INBTSerializable<NBTTagCompound> {
 	 * The description of what this module does.
 	 */
 	@Nonnull
-	public String getDescription() {
+	public final String getDescription() {
 		return LibrarianLib.PROXY.translate(getDescriptionKey());
-	}
-
-	/**
-	 * The description of what this module does.
-	 */
-	@Nonnull
-	public String getDescriptionKey() {
-		return "wizardry.spell." + getID() + ".desc";
 	}
 
 	/**
@@ -161,248 +115,140 @@ public abstract class Module implements INBTSerializable<NBTTagCompound> {
 	}
 
 	/**
-	 * Only return false if the spell cannot be taxed from mana. Return true otherwise.
+	 * The description of what this module does.
 	 */
-	public abstract boolean run(@Nonnull SpellData spell);
+	@Nonnull
+	public final String getDescriptionKey() {
+		return "wizardry.spell." + getID() + ".desc";
+	}
 
-	/**
-	 * This method runs client side when the spell runs. Spawn particles here.
-	 */
-	@SideOnly(Side.CLIENT)
-	public abstract void runClient(@Nonnull SpellData spell);
-
-	@Nullable
+	@Nonnull
 	public final Color getPrimaryColor() {
 		return primaryColor;
 	}
 
-	public final void setPrimaryColor(Color primaryColor) {
-		this.primaryColor = primaryColor;
-	}
-
-	@Nullable
-	public final Color getSecondaryColor() {
-		return secondaryColor;
-	}
-
-	public final void setSecondaryColor(Color secondaryColor) {
-		this.secondaryColor = secondaryColor;
-	}
-
-	public final double getManaDrain() {
-		return attributes.getDouble(Attributes.MANA);
-	}
-
-	public final float getReductionMultiplier(EntityLivingBase caster) {
-		ItemStack stack = BaublesSupport.getItem(caster, ModItems.CAPE);
-		if (stack != null) {
-			float time = ItemNBTHelper.getInt(stack, "maxTick", 0);
-			// Max reduction = 0.25
-			return (float) MathHelper.clamp(1 - (time / 1000000.0), 1, 0.25);
-		}
-		return 1;
-	}
-
-	public final void setManaDrain(double manaDrain) {
-		attributes.setDouble(Attributes.MANA, manaDrain);
-	}
-
 	public final double getBurnoutFill() {
-		return attributes.getDouble(Attributes.BURNOUT);
-	}
-
-	public final void setBurnoutFill(double burnoutFill) {
-		attributes.setDouble(Attributes.BURNOUT, burnoutFill);
+		return attributeRanges.get(AttributeRegistry.BURNOUT).base;
 	}
 
 	public final int getCooldownTime() {
-		return cooldownTime;
-	}
-
-	public final void setCooldownTime(int cooldownTime) {
-		this.cooldownTime = cooldownTime;
+		return (int) attributeRanges.get(AttributeRegistry.COOLDOWN).base;
 	}
 
 	public final int getChargeupTime() {
-		return chargeupTime;
-	}
-
-	public final void setChargeupTime(int chargeupTime) {
-		this.chargeupTime = chargeupTime;
+		return (int) attributeRanges.get(AttributeRegistry.CHARGEUP).base;
 	}
 
 	public final ItemStack getItemStack() {
 		return itemStack;
 	}
 
-	public final void setItemStack(ItemStack itemStack) {
-		this.itemStack = itemStack;
+	public final double getManaDrain() {
+		return attributeRanges.get(AttributeRegistry.MANA).base;
 	}
 
-	public final double getMultiplier() {
-		return multiplier;
+	public final float getPowerMultiplier() {
+		return (int) attributeRanges.get(AttributeRegistry.POWER_MULTI).base;
 	}
 
-	public final void setMultiplier(double multiplier) {
-		this.multiplier = multiplier;
+	public final float getManaMultiplier() {
+		return (int) attributeRanges.get(AttributeRegistry.MANA_MULTI).base;
 	}
 
-	public final boolean isHead() {
-		return isHead;
+	public final float getBurnoutMultiplier() {
+		return (int) attributeRanges.get(AttributeRegistry.BURNOUT_MULTI).base;
 	}
 
-	public final void setIsHead(boolean isHead) {
-		this.isHead = isHead;
+	@Nonnull
+	public final Color getSecondaryColor() {
+		return secondaryColor;
+	}
+
+	public List<AttributeModifier> getAttributes() {
+		return attributes;
+	}
+
+	public Map<Attribute, AttributeRange> getAttributeRanges() {
+		return attributeRanges;
 	}
 
 	/**
-	 * Use this to effectively run the entire module, rendering and all.
-	 *
-	 * @param data The spellData associated with it.
-	 * @return If the spell has succeeded.
+	 * If a child has this as true, it's parents will not run their render methods.
 	 */
-	public final boolean castSpell(@Nonnull SpellData data) {
-		if (this instanceof ILingeringModule)
-			if (!SpellTicker.INSTANCE.ticker.containsKey(this)) {
-				data.addData(MAX_TIME, ((ILingeringModule) this).lingeringTime(data));
-				SpellTicker.INSTANCE.ticker.put(this, new Pair<>(data, ((ILingeringModule) this).lingeringTime(data)));
-			}
-		//data.addData(SpellData.DefaultKeys.STRENGTH, calculateStrength(data) * getMultiplier());
+	public boolean overrideParentRenders() {
+		return false;
+	}
 
-		SpellCastEvent event = new SpellCastEvent(this, data);
+	/**
+	 * If a child has this as true, it's parents will not run their run methods.
+	 */
+	public boolean overrideParentRuns() {
+		return false;
+	}
+
+	public final void addAttribute(AttributeModifier attribute) {
+		this.attributes.add(attribute);
+	}
+	
+	public final void addAttributeRange(Attribute attribute, AttributeRange range)
+	{
+		this.attributeRanges.put(attribute, range);
+	}
+
+	public boolean ignoreResult() {
+		return false;
+	}
+
+	/**
+	 * Only return false if the spellData cannot be taxed from mana. Return true otherwise.
+	 */
+	public abstract boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing);
+
+	/**
+	 * This method runs client side when the spellData runs. Spawn particles here.
+	 */
+	@SideOnly(Side.CLIENT)
+	public abstract void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing);
+
+	/**
+	 * Use this to run the module properly without rendering.
+	 *
+	 * @param spell      The spellData associated with it.
+	 * @param spellRing The SpellRing made with this.
+	 * @return If the spellData has succeeded.
+	 */
+	public final boolean castSpell(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		if (spell.world.isRemote) return true;
+
+		if (this instanceof ILingeringModule) {
+			boolean alreadyLingering = false;
+			for (SpellTicker.LingeringObject lingeringObject : SpellTicker.getStorageMap()) {
+				if (lingeringObject.getSpellRing() == spellRing
+						|| lingeringObject.getSpellData() == spell) {
+					alreadyLingering = true;
+					break;
+				}
+			}
+			if (!alreadyLingering)
+				SpellTicker.addLingerSpell(spellRing, spell, ((ILingeringModule) this).getLingeringTime(spell, spellRing));
+		}
+
+		SpellCastEvent event = new SpellCastEvent(spellRing, spell);
 		MinecraftForge.EVENT_BUS.post(event);
 
-		if (!event.isCanceled()) {
-			boolean success = run(data);
-			if (event.castParticles) castParticles(data);
-			return success;
-		} else {
-			if (event.castParticles) castParticles(data);
-			return false;
-		}
+		return !event.isCanceled() && run(spell, spellRing);
 	}
 
-	public final void castParticles(@Nonnull SpellData data) {
-		Entity caster = data.getData(CASTER);
-		Vec3d target = data.hasData(SpellData.DefaultKeys.ORIGIN) ?
-				data.getData(SpellData.DefaultKeys.ORIGIN) : data.hasData(SpellData.DefaultKeys.TARGET_HIT) ?
-				data.getData(SpellData.DefaultKeys.TARGET_HIT) : caster != null ?
-				caster.getPositionVector() : null;
+	public final void sendRenderPacket(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Vec3d target = spell.getTargetWithFallback();
 
 		if (target != null)
-			PacketHandler.NETWORK.sendToAllAround(new PacketRenderSpell(this, data),
-					new NetworkRegistry.TargetPoint(data.world.provider.getDimension(), target.x, target.y, target.z, 60));
+			PacketHandler.NETWORK.sendToAllAround(new PacketRenderSpell(spell, spellRing),
+					new NetworkRegistry.TargetPoint(spell.world.provider.getDimension(), target.x, target.y, target.z, 60));
 	}
 
-	protected final double calcBurnoutPercent(@Nullable Entity entity) {
-		if (entity == null) return 1;
-		//if (entity instanceof EntityPlayer && ((EntityPlayer) entity).isCreative()) return 1;
-		CapManager manager = new CapManager(entity);
-		return ((manager.getMaxBurnout() - manager.getBurnout()) / (manager.getMaxBurnout() * 1.0));
-	}
-
-	protected final boolean runNextModule(@Nonnull SpellData data) {
-		if (nextModule != null) {
-			nextModule.setMultiplier(nextModule.getMultiplier() * getMultiplier());
-		}
-		return nextModule != null && nextModule.castSpell(data);
-	}
-
-	/**
-	 * Get all the children modules of this module including itself.
-	 */
-	public final Set<Module> getAllChildModules() {
-		Set<Module> modules = new HashSet<>();
-		Module tempModule = this;
-		while (tempModule != null) {
-			modules.add(tempModule);
-			tempModule = tempModule.nextModule;
-		}
-		return modules;
-	}
-
-	protected final double getModifier(SpellData data, String attribute, double min, double max) {
-		Entity caster = data.getData(CASTER);
-		double burnout = calcBurnoutPercent(caster);
-		return (attributes.hasKey(attribute) ? MathHelper.clamp(min + attributes.getDouble(attribute), min, max) : min) * getMultiplier() * burnout;
-	}
-
-	public void processModifiers() {
-		ArrayListMultimap<Operation, AttributeModifier> sortedMap = ArrayListMultimap.create();
-		for (AttributeModifier modifier : modifiersToApply)
-			sortedMap.put(modifier.getOperation(), modifier);
-
-		for (Operation op : Operation.values()) {
-			for (AttributeModifier modifier : sortedMap.get(op)) {
-				String attribute = modifier.getAttribute();
-				double current = attributes.getDouble(attribute);
-				double newValue = modifier.apply(current);
-				attributes.setDouble(attribute, newValue);
-				Wizardry.logger.info(getID() + ": Attribute: " + attribute + ": " + current + "-> " + newValue);
-			}
-		}
-	}
-
-	protected final <T extends Module> Module cloneModule(T toCloneTo) {
-		toCloneTo.attributes = attributes.copy();
-		toCloneTo.modifiers = new ArrayList<>(modifiers);
-		toCloneTo.setPrimaryColor(getPrimaryColor());
-		toCloneTo.setSecondaryColor(getSecondaryColor());
-		toCloneTo.setBurnoutFill(getBurnoutFill());
-		toCloneTo.setManaDrain(getManaDrain());
-		toCloneTo.setCooldownTime(getCooldownTime());
-		toCloneTo.setChargeupTime(getChargeupTime());
-		toCloneTo.setItemStack(getItemStack());
-		toCloneTo.setMultiplier(getMultiplier());
-		return toCloneTo;
-	}
-
-	public abstract Module copy();
-
-	@Override
-	public NBTTagCompound serializeNBT() {
-		NBTTagCompound compound = new NBTTagCompound();
-
-		compound.setTag("attributes", attributes);
-
-		if (nextModule != null) compound.setTag("next_module", nextModule.serializeNBT());
-
-		compound.setString("id", getID());
-
-		if (getManaDrain() != 0) compound.setDouble("mana_drain", getManaDrain());
-		if (getBurnoutFill() != 0) compound.setDouble("burnout_fill", getBurnoutFill());
-		if (getChargeupTime() != 0) compound.setDouble("chargeup_time", getChargeupTime());
-		if (getCooldownTime() != 0) compound.setDouble("cooldown_time", getCooldownTime());
-		if (getManaDrain() != 1) compound.setDouble("multiplier", getMultiplier());
-		if (isHead) compound.setBoolean("is_head", true);
-
-		if (getItemStack() != null) compound.setTag("item_stack", getItemStack().serializeNBT());
-		if (getPrimaryColor() != null) compound.setInteger("primary_color", getPrimaryColor().getRGB());
-		if (getSecondaryColor() != null) compound.setInteger("secondary_color", getSecondaryColor().getRGB());
-		return compound;
-	}
-
-	@Override
-	public void deserializeNBT(NBTTagCompound nbt) {
-		if (nbt.hasKey("next_module")) {
-			Module tempModule = ModuleRegistry.INSTANCE.getModule(nbt.getCompoundTag("next_module").getString("id"));
-			if (tempModule != null) {
-				nextModule = tempModule.copy();
-				if (nextModule != null) nextModule.deserializeNBT(nbt.getCompoundTag("next_module"));
-			} else nextModule = null;
-		} else nextModule = null;
-
-		if (nbt.hasKey("attributes")) attributes = nbt.getCompoundTag("attributes");
-		else attributes = new NBTTagCompound();
-
-		if (nbt.hasKey("primary_color")) setPrimaryColor(new Color(nbt.getInteger("primary_color")));
-		if (nbt.hasKey("secondary_color")) setSecondaryColor(new Color(nbt.getInteger("secondary_color")));
-		if (nbt.hasKey("mana_drain")) setManaDrain(nbt.getDouble("mana_drain"));
-		if (nbt.hasKey("burnout_fill")) setBurnoutFill(nbt.getDouble("burnout_fill"));
-		if (nbt.hasKey("chargeup_time")) setChargeupTime(nbt.getInteger("chargeup_time"));
-		if (nbt.hasKey("cooldown_time")) setCooldownTime(nbt.getInteger("cooldown_time"));
-		if (nbt.hasKey("item_stack")) setItemStack(new ItemStack(nbt.getCompoundTag("item_stack")));
-		if (nbt.hasKey("multiplier")) setMultiplier(nbt.getDouble("multiplier"));
-		if (nbt.hasKey("is_head")) isHead = true;
+	@Nonnull
+	public final NBTTagString serialize() {
+		return new NBTTagString(getID());
 	}
 }

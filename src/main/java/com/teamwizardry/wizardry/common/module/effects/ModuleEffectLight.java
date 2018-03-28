@@ -1,7 +1,7 @@
 package com.teamwizardry.wizardry.common.module.effects;
 
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
 import com.teamwizardry.wizardry.api.util.BlockUtils;
@@ -18,10 +18,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
+import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.FACE_HIT;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectLight extends ModuleEffect {
@@ -34,13 +34,13 @@ public class ModuleEffectLight extends ModuleEffect {
 
 	@Override
 	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		BlockPos targetPos = spell.getData(BLOCK_HIT);
-		Vec3d hit = spell.getData(TARGET_HIT);
-		Entity targetEntity = spell.getData(ENTITY_HIT);
+		BlockPos targetPos = spell.getTargetPos();
+		Vec3d hit = spell.getTarget();
+		Entity targetEntity = spell.getVictim();
 		EnumFacing facing = spell.getData(FACE_HIT);
-		Entity caster = spell.getData(CASTER);
+		Entity caster = spell.getCaster();
 
 		if (targetPos == null && hit != null) targetPos = new BlockPos(hit);
 		if (targetPos == null) return false;
@@ -50,6 +50,7 @@ public class ModuleEffectLight extends ModuleEffect {
 		else if (facing != null && world.isAirBlock(targetPos.offset(facing))) finalPos = targetPos.offset(facing);
 
 		if (finalPos == null) return false;
+		if (!spellRing.taxCaster(spell)) return false;
 
 		BlockUtils.placeBlock(world, finalPos, ModBlocks.LIGHT.getDefaultState(), caster instanceof EntityPlayerMP ? (EntityPlayerMP) caster : null);
 
@@ -58,18 +59,12 @@ public class ModuleEffectLight extends ModuleEffect {
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Vec3d position = spell.getData(TARGET_HIT);
+		Vec3d position = spell.getTarget();
 
 		if (position == null) return;
 
 		LibParticles.EXPLODE(world, position, getPrimaryColor(), getSecondaryColor(), 0.2, 0.3, 20, 40, 10, true);
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectLight());
 	}
 }

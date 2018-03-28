@@ -25,8 +25,9 @@ import static org.lwjgl.opengl.GL11.GL_ONE;
 import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
+@SideOnly(Side.CLIENT)
 public class LightningRenderer {
 
 	public static LightningRenderer INSTANCE = new LightningRenderer();
@@ -50,8 +51,7 @@ public class LightningRenderer {
 	@SubscribeEvent
 	@SideOnly(Side.CLIENT)
 	public void render(RenderWorldLastEvent event) {
-		ArrayList<LightningBolt> temp = new ArrayList<>();
-		temp.addAll(bolts);
+		ArrayList<LightningBolt> temp = new ArrayList<>(bolts);
 		for (LightningBolt bolt : temp) {
 			if (--bolt.tick <= 0) clear.add(bolt);
 

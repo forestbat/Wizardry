@@ -2,11 +2,11 @@ package com.teamwizardry.wizardry.api.spell.attribute;
 
 public class AttributeModifier {
 
-	private String attribute;
+	private AttributeRegistry.Attribute attribute;
 	private double modifier;
 	private Operation op;
 
-	public AttributeModifier(String attribute, double modifier, Operation op) {
+	public AttributeModifier(AttributeRegistry.Attribute attribute, double modifier, Operation op) {
 		this.attribute = attribute;
 		this.modifier = modifier;
 		this.op = op;
@@ -16,11 +16,7 @@ public class AttributeModifier {
 		return op.apply(currentValue, modifier);
 	}
 
-	public boolean isAttribute(String attribute) {
-		return this.attribute.equals(attribute);
-	}
-
-	public String getAttribute() {
+	public AttributeRegistry.Attribute getAttribute() {
 		return attribute;
 	}
 
@@ -28,13 +24,20 @@ public class AttributeModifier {
 		return op;
 	}
 
+	public double getModifier() {
+		return modifier;
+	}
+
+	public void setModifier(double newValue) {
+		modifier = newValue;
+	}
+
 	public AttributeModifier copy() {
 		return new AttributeModifier(attribute, modifier, op);
 	}
-	
+
 	@Override
-	public String toString()
-	{
-		return attribute + ": " + op + " " + modifier;
+	public String toString() {
+		return attribute.getShortName() + ": " + op + " " + modifier;
 	}
 }

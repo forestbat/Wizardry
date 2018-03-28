@@ -10,12 +10,12 @@ import net.minecraft.item.Item;
 import net.minecraftforge.fml.common.Loader;
 
 /**
- * Created by Saad on 4/9/2016.
+ * Created by Demoniaque on 4/9/2016.
  */
 public class ModItems {
 
-	public static ItemGlassOrb GLASS_ORB;
-	public static ItemManaOrb MANA_ORB;
+	//public static ItemGlassOrb GLASS_ORB;
+	public static ItemOrb ORB;
 	public static ItemNacrePearl PEARL_NACRE;
 
 	public static ItemStaff STAFF;
@@ -26,6 +26,7 @@ public class ModItems {
 	public static ItemBomb BOMB;
 	public static ItemJar JAR;
 	public static ItemUnicornHorn UNICORN_HORN;
+	public static ItemBlackenedSpirit BLACKENED_SPIRIT;
 	public static Item CAPE;
 
 	public static ItemFairyWings FAIRY_WINGS;
@@ -44,8 +45,8 @@ public class ModItems {
 	public static ItemWisdomStick WISDOM_STICK;
 
 	public static void init() {
-		GLASS_ORB = new ItemGlassOrb();
-		MANA_ORB = new ItemManaOrb();
+		//GLASS_ORB = new ItemGlassOrb();
+		ORB = new ItemOrb();
 		PEARL_NACRE = new ItemNacrePearl();
 
 		RING = new ItemRing();
@@ -53,6 +54,7 @@ public class ModItems {
 		MAGIC_WAND = new ItemMagicWand();
 		SYRINGE = new ItemSyringe();
 		BOMB = new ItemBomb();
+		BLACKENED_SPIRIT = new ItemBlackenedSpirit();
 
 		STAFF = new ItemStaff();
 

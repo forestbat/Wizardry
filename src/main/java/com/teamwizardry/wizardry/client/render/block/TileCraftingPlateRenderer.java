@@ -6,7 +6,6 @@ import com.teamwizardry.librarianlib.features.animator.Easing;
 import com.teamwizardry.librarianlib.features.animator.animations.BasicAnimation;
 import com.teamwizardry.librarianlib.features.math.interpolate.position.InterpBezier3D;
 import com.teamwizardry.librarianlib.features.tesr.TileRenderHandler;
-import com.teamwizardry.librarianlib.features.utilities.client.ClientRunnable;
 import com.teamwizardry.wizardry.api.block.CachedStructure;
 import com.teamwizardry.wizardry.api.block.IStructure;
 import com.teamwizardry.wizardry.api.capability.CapManager;
@@ -28,15 +27,13 @@ import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import org.jetbrains.annotations.NotNull;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nonnull;
 import java.util.HashSet;
 
 /**
- * Created by Saad on 6/11/2016.
+ * Created by Demoniaque on 6/11/2016.
  */
 public class TileCraftingPlateRenderer extends TileRenderHandler<TileCraftingPlate> {
 
@@ -46,7 +43,7 @@ public class TileCraftingPlateRenderer extends TileRenderHandler<TileCraftingPla
 
 	private CachedStructure cachedStructure;
 
-	public TileCraftingPlateRenderer(@NotNull TileCraftingPlate tile) {
+	public TileCraftingPlateRenderer(@Nonnull TileCraftingPlate tile) {
 		super(tile);
 
 		animator.setUseWorldTicks(true);
@@ -62,11 +59,12 @@ public class TileCraftingPlateRenderer extends TileRenderHandler<TileCraftingPla
 
 		if (tile.positions[i] == null) return;
 
-		CapManager manager = new CapManager(tile.inputPearl.getHandler().getStackInSlot(0));
+		CapManager manager = new CapManager(tile.getWizardryCap());
 
 		Vec3d newDest;
 		double t;
-		if (!manager.isManaEmpty() && tile.isAbleToSuckMana || (!tile.inputPearl.getHandler().getStackInSlot(0).isEmpty() && tile.isAbleToSuckMana)) {
+		if ((!tile.isAbleToSuckMana && !manager.isManaEmpty())
+				|| (!tile.inputPearl.getHandler().getStackInSlot(0).isEmpty() && tile.isAbleToSuckMana)) {
 
 			if (tile.inputPearl.getHandler().getStackInSlot(0).isEmpty()) t = 1;
 			else {
@@ -94,7 +92,7 @@ public class TileCraftingPlateRenderer extends TileRenderHandler<TileCraftingPla
 			newDest = Vec3d.ZERO;
 
 			if (!reverse) {
-				for (BlockPos pos : tile.getNearestSuckables(TileManaBattery.class, tile.getWorld(), tile.getPos(), true)) {
+				for (BlockPos pos : tile.getNearestInteractablesPoses(TileManaBattery.class)) {
 					newDest = new Vec3d(pos).subtract(new Vec3d(tile.getPos())).normalize().scale(1.0 / 2.0);
 					break;
 				}
@@ -155,18 +153,12 @@ public class TileCraftingPlateRenderer extends TileRenderHandler<TileCraftingPla
 
 		} else if (!tile.revealStructure && !errors.isEmpty()) {
 			for (BlockPos error : errors)
-				ClientRunnable.run(new ClientRunnable() {
-					@Override
-					@SideOnly(Side.CLIENT)
-					public void runIfClient() {
-						StructureErrorRenderer.INSTANCE.addError(error);
-					}
-				});
+				StructureErrorRenderer.INSTANCE.addError(error);
 		}
 
 
 		ItemStack pearl = tile.inputPearl.getHandler().getStackInSlot(0);
-		CapManager manager = new CapManager(pearl);
+		CapManager manager = new CapManager(tile.getWizardryCap());
 
 		int count = 0;
 		for (int i = 0; i < tile.realInventory.getHandler().getSlots(); i++) {
@@ -195,7 +187,7 @@ public class TileCraftingPlateRenderer extends TileRenderHandler<TileCraftingPla
 				GlStateManager.popMatrix();
 
 
-				if (!manager.isManaEmpty() && tile.isAbleToSuckMana || (!tile.inputPearl.getHandler().getStackInSlot(0).isEmpty() && tile.isAbleToSuckMana)) {
+				if (!manager.isManaEmpty() && !tile.isAbleToSuckMana || (!tile.inputPearl.getHandler().getStackInSlot(0).isEmpty() && tile.isAbleToSuckMana)) {
 					if (tile.inputPearl.getHandler().getStackInSlot(0).isEmpty() && RandUtil.nextInt(count > 0 && count / 2 > 0 ? count / 2 : 1) == 0)
 						LibParticles.CLUSTER_DRAPE(tile.getWorld(), new Vec3d(tile.getPos()).addVector(0.5, 0.5, 0.5).add(pos));
 

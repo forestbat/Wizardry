@@ -8,18 +8,17 @@ import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.spell.ILingeringModule;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.ModuleShape;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
 import com.teamwizardry.wizardry.api.util.RandUtil;
-import com.teamwizardry.wizardry.api.util.RandUtilSeed;
 import com.teamwizardry.wizardry.api.util.interp.InterpScale;
-import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierExtendRange;
-import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierExtendTime;
 import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreaseAOE;
+import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreaseDuration;
 import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreasePotency;
+import com.teamwizardry.wizardry.common.module.modifiers.ModuleModifierIncreaseRange;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
@@ -38,7 +37,7 @@ import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
 
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleShapeZone extends ModuleShape implements ILingeringModule {
@@ -51,31 +50,34 @@ public class ModuleShapeZone extends ModuleShape implements ILingeringModule {
 
 	@Override
 	public ModuleModifier[] applicableModifiers() {
-		return new ModuleModifier[]{new ModuleModifierIncreaseAOE(), new ModuleModifierIncreasePotency(), new ModuleModifierExtendRange(), new ModuleModifierExtendTime()};
+		return new ModuleModifier[]{new ModuleModifierIncreaseAOE(), new ModuleModifierIncreasePotency(), new ModuleModifierIncreaseRange(), new ModuleModifierIncreaseDuration()};
+	}
+
+	@Override
+	public boolean ignoreResult() {
+		return true;
 	}
 
 	@Override
 	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
 		Vec3d position = spell.getData(ORIGIN);
-		Entity caster = spell.getData(CASTER);
-		Vec3d targetPos = spell.getData(TARGET_HIT);
-		long seed = RandUtil.nextLong(100, 1000000);
-		spell.addData(SEED, seed);
-
-		RandUtilSeed r = new RandUtilSeed(seed);
+		Entity caster = spell.getCaster();
+		Vec3d targetPos = spell.getTarget();
 
 		if (targetPos == null) return false;
 
-		double aoe = getModifier(spell, Attributes.AREA, 3, 10);
-		double strength = getModifier(spell, Attributes.POTENCY, 1, 10);
-		double range = getModifier(spell, Attributes.RANGE, 1, 20);
+		double aoe = spellRing.getAttributeValue(AttributeRegistry.AREA, spell);
+		double strength = spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell);
+		double range = spellRing.getAttributeValue(AttributeRegistry.RANGE, spell);
+
+		spellRing.multiplyMultiplierForAll((float) (aoe / 7.0 * strength / 15.0 * range / 15.0));
 
 		List<Entity> entities = world.getEntitiesWithinAABBExcludingEntity(null, new AxisAlignedBB(new BlockPos(targetPos)).grow(aoe, 1, aoe));
 
-		setMultiplier(0.7);
-		if (r.nextInt((int) ((70 - strength))) == 0) {
+		if (RandUtil.nextInt((int) ((70 - strength))) == 0) {
+			if (!spellRing.taxCaster(spell)) return false;
 			for (Entity entity : entities) {
 				if (entity.getDistance(targetPos.x, targetPos.y, targetPos.z) <= aoe) {
 					Vec3d vec = targetPos.addVector(RandUtil.nextDouble(-strength, strength), RandUtil.nextDouble(range), RandUtil.nextDouble(-strength, strength));
@@ -85,12 +87,16 @@ public class ModuleShapeZone extends ModuleShape implements ILingeringModule {
 					copy.addData(YAW, entity.rotationYaw);
 					copy.addData(PITCH, entity.rotationPitch);
 					copy.addData(ORIGIN, vec);
-					runNextModule(copy);
+
+					if (spellRing.getChildRing() != null) {
+						spellRing.getChildRing().runSpellRing(spell);
+					}
 				}
 			}
 		}
 
-		if (r.nextInt((int) ((40 - strength))) != 0) return true;
+		if (RandUtil.nextInt((int) ((40 - strength))) != 0) return false;
+
 		ArrayList<Vec3d> blocks = new ArrayList<>();
 		for (double i = -aoe; i < aoe; i++)
 			for (double j = 0; j < range; j++)
@@ -101,7 +107,8 @@ public class ModuleShapeZone extends ModuleShape implements ILingeringModule {
 						blocks.add(pos);
 					}
 				}
-		if (blocks.isEmpty()) return true;
+		if (blocks.isEmpty()) return false;
+		if (!spellRing.taxCaster(spell)) return false;
 		Vec3d pos = blocks.get(RandUtil.nextInt(blocks.size() - 1));
 
 		SpellData copy = spell.copy();
@@ -109,19 +116,22 @@ public class ModuleShapeZone extends ModuleShape implements ILingeringModule {
 		copy.processBlock(new BlockPos(pos), EnumFacing.UP, pos);
 		copy.addData(YAW, RandUtil.nextFloat(-180, 180));
 		copy.addData(PITCH, RandUtil.nextFloat(-50, 50));
-		runNextModule(copy);
+
+		if (spellRing.getChildRing() != null) {
+			spellRing.getChildRing().runSpellRing(copy);
+		}
 		return true;
 	}
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
-		Vec3d target = spell.getData(TARGET_HIT);
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Vec3d target = spell.getTarget();
 
 		if (target == null) return;
 		if (RandUtil.nextInt(10) != 0) return;
 
-		double aoe = getModifier(spell, Attributes.AREA, 3, 10);
+		double aoe = spellRing.getAttributeValue(AttributeRegistry.AREA, spell);
 
 		ParticleBuilder glitter = new ParticleBuilder(10);
 		glitter.setRender(new ResourceLocation(Wizardry.MODID, Constants.MISC.SPARKLE_BLURRED));
@@ -143,15 +153,9 @@ public class ModuleShapeZone extends ModuleShape implements ILingeringModule {
 		});
 	}
 
-	@Nonnull
 	@Override
-	public Module copy() {
-		return cloneModule(new ModuleShapeZone());
-	}
-
-	@Override
-	public int lingeringTime(SpellData spell) {
-		double strength = getModifier(spell, Attributes.DURATION, 40, 100) * 30;
+	public int getLingeringTime(SpellData spell, SpellRing spellRing) {
+		double strength = spellRing.getAttributeValue(AttributeRegistry.DURATION, spell) * 10;
 		return (int) strength;
 	}
 }

@@ -24,13 +24,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public interface IStructure {
-
-	CachedStructure getStructure();
-
-	Vec3i offsetToCenter();
 
 	static ItemStack craftItemFromInventory(EntityPlayer player, ItemStack output) {
 		HashSet<IRecipe> recipes = getRecipesForItem(output);
@@ -123,6 +119,10 @@ public interface IStructure {
 		}
 		return recipes;
 	}
+
+	CachedStructure getStructure();
+
+	Vec3i offsetToCenter();
 
 	default boolean isStructureComplete(World world, BlockPos pos) {
 		for (Template.BlockInfo info : getStructure().blockInfos()) {

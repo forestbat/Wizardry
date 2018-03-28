@@ -18,7 +18,7 @@ entity.unicorn.name=Einhorn
 entity.spell_projectile.name=Zauberstoß
 
 item.wizardry:book.name=Der Zauberer Kodex
-item.wizardry:ring.name=Goldener Ring
+item.wizardry:spellRing.name=Goldener Ring
 item.wizardry:ring_pearl.name=Goldener Ring
 item.wizardry:devil_dust.name=Teufelsstaub
 item.wizardry:mana_pearl.name=Mana Perle
@@ -69,7 +69,7 @@ advancement.wizardry.devildust.desc=Verbrenne ein Buch im Feuer um Teufelsstaub 
 advancement.wizardry.crunch=§oCRUNCH.§a
 advancement.wizardry.crunch.desc=Fiel direkt durch den Bedrock in die Hölle
 
-bookGui.physicsbook.defaulttitle=Physik Buch
+book.physicsbook.defaulttitle=Physik Buch
 
 fluid.nacre_fluid=Perlmutt
 fluid.mana_fluid=Mana
@@ -97,4 +97,4 @@ potion.wizardry.zach_corruption=Korruption
 
 item_group.wizardry=Zauberei
 
-wizardry.misc.module=Zauberspruch:
+wizardry.misc.moduleSet=Zauberspruch:

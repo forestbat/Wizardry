@@ -1,7 +1,7 @@
 package com.teamwizardry.wizardry.common.module.events;
 
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEvent;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
 import net.minecraft.entity.Entity;
@@ -11,10 +11,9 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import javax.annotation.Nonnull;
 
 import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.BLOCK_HIT;
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.ENTITY_HIT;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEventCollideEntity extends ModuleEvent {
@@ -26,21 +25,15 @@ public class ModuleEventCollideEntity extends ModuleEvent {
 	}
 
 	@Override
-	public boolean run(@Nonnull SpellData spell) {
-		Entity entity = spell.getData(ENTITY_HIT);
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Entity entity = spell.getVictim();
 		spell.removeData(BLOCK_HIT);
-		return entity != null && nextModule != null && nextModule.run(spell);
+		return entity != null;
 	}
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 
-	}
-
-	@Nonnull
-	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEventCollideEntity());
 	}
 }

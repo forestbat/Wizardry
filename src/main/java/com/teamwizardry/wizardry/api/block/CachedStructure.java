@@ -22,10 +22,10 @@ import net.minecraftforge.client.model.IModel;
 import net.minecraftforge.client.model.ModelLoaderRegistry;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nonnull;
 import java.util.EnumMap;
 
 public class CachedStructure extends Structure {
@@ -34,10 +34,10 @@ public class CachedStructure extends Structure {
 	public HashMultimap<BlockRenderLayer, Template.BlockInfo> blocks;
 	@SideOnly(Side.CLIENT)
 	public EnumMap<BlockRenderLayer, int[]> vboCaches;
-	private IStructure block;
 	public ResourceLocation loc;
+	private IStructure block;
 
-	public CachedStructure(@NotNull ResourceLocation loc, @Nullable IBlockAccess access) {
+	public CachedStructure(@Nonnull ResourceLocation loc, @Nullable IBlockAccess access) {
 		super(loc);
 		this.loc = loc;
 

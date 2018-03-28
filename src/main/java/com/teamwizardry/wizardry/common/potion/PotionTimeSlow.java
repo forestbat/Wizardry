@@ -2,6 +2,7 @@ package com.teamwizardry.wizardry.common.potion;
 
 import com.teamwizardry.wizardry.api.events.EntityMoveEvent;
 import com.teamwizardry.wizardry.api.spell.SpellData;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.ModuleRegistry;
 import com.teamwizardry.wizardry.common.module.effects.ModuleEffectTimeSlow;
 import com.teamwizardry.wizardry.init.ModPotions;
@@ -37,7 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public class PotionTimeSlow extends PotionBase {
 
@@ -83,10 +84,12 @@ public class PotionTimeSlow extends PotionBase {
 		PotionEffect effect = base.getActivePotionEffect(ModPotions.TIME_SLOW);
 		if (effect == null) return;
 
-		ModuleEffectTimeSlow slow = (ModuleEffectTimeSlow) ModuleRegistry.INSTANCE.getModule("effect_time_slow").copy();
+		ModuleEffectTimeSlow slow = (ModuleEffectTimeSlow) ModuleRegistry.INSTANCE.getModule("effect_time_slow");
 		SpellData data = new SpellData(event.entity.world);
 		data.processEntity(event.entity, false);
-		slow.castParticles(data);
+
+		SpellRing ring = new SpellRing(slow);
+		ring.getModule().sendRenderPacket(data, ring);
 
 		event.override = true;
 

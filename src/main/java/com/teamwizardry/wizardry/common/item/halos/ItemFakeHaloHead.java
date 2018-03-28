@@ -4,19 +4,33 @@ import com.teamwizardry.librarianlib.features.base.item.ItemModArmor;
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.ConfigValues;
 import com.teamwizardry.wizardry.api.capability.CapManager;
-import com.teamwizardry.wizardry.api.item.IFakeHalo;
-import com.teamwizardry.wizardry.api.item.IHalo;
+import com.teamwizardry.wizardry.api.item.halo.IHalo;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.EnumActionResult;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-public class ItemFakeHaloHead extends ItemModArmor implements IFakeHalo, IHalo {
+public class ItemFakeHaloHead extends ItemModArmor implements IHalo {
 
 	public ItemFakeHaloHead() {
 		super("halo_fake", ArmorMaterial.IRON, EntityEquipmentSlot.HEAD);
 		setMaxStackSize(1);
+	}
+
+	@Override
+	public EnumActionResult onItemUse(EntityPlayer player, World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
+
+		//if (worldIn.getBlockState(pos).getBlock() == ModBlocks.HALO_INFUSER) {
+		//	return EnumActionResult.SUCCESS;
+		//}
+
+		return super.onItemUse(player, worldIn, pos, hand, facing, hitX, hitY, hitZ);
 	}
 
 	@Override

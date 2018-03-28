@@ -23,13 +23,19 @@ archivesBaseName = "wizardry"
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+
 minecraft {
     version = "$mc_version-$forge_version"
     runDir = "run"
     mappings = "$mcp_version"
 
-    clientJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
-    serverJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
+    replace 'GRADLE:VERSION', mod_version
+    replace 'required-before:librarianlib', 'required-before:librarianlib@' + liblib_version
+
+    replaceIn 'Wizardry.java'
+
+    clientJvmArgs = ["-Dfml.coreMods.load=$core_plugin,com.teamwizardry.librarianlib.asm.LibLibCorePlugin"]
+    serverJvmArgs = ["-Dfml.coreMods.load=$core_plugin,com.teamwizardry.librarianlib.asm.LibLibCorePlugin"]
 }
 
 repositories {
@@ -42,12 +48,15 @@ repositories {
 }
 
 dependencies {
-	compile "com.teamwizardry.librarianlib:librarianlib-1.12.2:$liblib_version:deobf"
+	compile "com.teamwizardry.librarianlib:librarianlib-1.12.2:$liblib_version-SNAPSHOT:deobf"
 	deobfCompile "mezz.jei:jei_1.12:$jei_version:api"
 	runtime "mezz.jei:jei_1.12:$jei_version"
-	deobfCompile "mcp.mobius.waila:Hwyla:$hwyla_version"
 	runtime "team.chisel.ctm:CTM:$ctm_version"
     deobfCompile "com.azanor.baubles:Baubles:1.12-1.5.2"
+
+    // https://mvnrepository.com/artifact/ai.api/libai
+    //compile group: 'ai.api', name: 'libai', version: '1.6.12'
+
 }
 
 jar {
@@ -58,6 +67,8 @@ jar {
         )
     }
 }
+
+
 
 processResources {
     inputs.property 'version', project.version

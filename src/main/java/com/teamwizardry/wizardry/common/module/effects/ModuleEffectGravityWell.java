@@ -10,8 +10,8 @@ import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.Constants;
 import com.teamwizardry.wizardry.api.spell.ILingeringModule;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.attribute.Attributes;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.attribute.AttributeRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleEffect;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.RegisterModule;
@@ -32,10 +32,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nonnull;
 
-import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
+import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.ENTITY_HIT;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @RegisterModule
 public class ModuleEffectGravityWell extends ModuleEffect implements ILingeringModule {
@@ -53,23 +53,23 @@ public class ModuleEffectGravityWell extends ModuleEffect implements ILingeringM
 
 	@Override
 	@SuppressWarnings("unused")
-	public boolean run(@Nonnull SpellData spell) {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
 		World world = spell.world;
-		Vec3d position = spell.getData(TARGET_HIT);
-		Entity caster = spell.getData(CASTER);
+		Vec3d position = spell.getTarget();
+		Entity caster = spell.getCaster();
 
 		if (position == null) return false;
 
-		double strength = getModifier(spell, Attributes.AREA, 16, 32);
+		double strength = spellRing.getAttributeValue(AttributeRegistry.AREA, spell);
 
 		for (Entity entity : world.getEntitiesWithinAABBExcludingEntity(null, new AxisAlignedBB(new BlockPos(position)).grow(strength, strength, strength))) {
 			if (entity == null) continue;
 			double dist = entity.getPositionVector().distanceTo(position);
 			if (dist < 2) continue;
 			if (dist > strength) continue;
-			if (!tax(this, spell)) return false;
+			if (!spellRing.taxCaster(spell)) return false;
 
-			final double upperMag = getModifier(spell, Attributes.POTENCY, 10, 50) / 100.0;
+			final double upperMag = spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell) / 100.0;
 			final double scale = 3.5;
 			double mag = upperMag * (scale * dist / (-scale * dist - 1) + 1);
 
@@ -84,8 +84,6 @@ public class ModuleEffectGravityWell extends ModuleEffect implements ILingeringM
 			spell.addData(ENTITY_HIT, entity);
 			if (entity instanceof EntityPlayerMP)
 				((EntityPlayerMP) entity).connection.sendPacket(new SPacketEntityVelocity(entity));
-
-			runNextModule(spell);
 		}
 
 		return true;
@@ -93,8 +91,8 @@ public class ModuleEffectGravityWell extends ModuleEffect implements ILingeringM
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void runClient(@Nonnull SpellData spell) {
-		Vec3d position = spell.getData(TARGET_HIT);
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		Vec3d position = spell.getTarget();
 
 		if (position == null) return;
 		if (RandUtil.nextInt(10) != 0) return;
@@ -121,14 +119,8 @@ public class ModuleEffectGravityWell extends ModuleEffect implements ILingeringM
 		});
 	}
 
-	@Nonnull
 	@Override
-	public Module copy() {
-		return cloneModule(new ModuleEffectGravityWell());
-	}
-
-	@Override
-	public int lingeringTime(SpellData spell) {
-		return (int) (getModifier(spell, Attributes.DURATION, 10, 64) * 500);
+	public int getLingeringTime(SpellData spell, SpellRing spellRing) {
+		return (int) (spellRing.getAttributeValue(AttributeRegistry.DURATION, spell) * 500);
 	}
 }

@@ -16,7 +16,7 @@ entity.spirit_wight.name=Criatura Espiritual
 entity.unicorn.name=Unicórnio
 
 item.wizardry:book.name=Códice do Feiticeiro
-item.wizardry:ring.name=Anel Dourado
+item.wizardry:spellRing.name=Anel Dourado
 item.wizardry:ring_pearl.name=Anel Dourado
 item.wizardry:devil_dust.name=Pó Demoníaco
 item.wizardry:mana_pearl.name=Pérola de Mana
@@ -63,7 +63,7 @@ advancement.wizardry.devildust=Açúcar e Tempero
 advancement.wizardry.devildust.desc=Derreta um livro no fogo para criar Pó Demoníaco
 advancement.wizardry.crunch=§oCRACK!§a
 advancement.wizardry.crunch.desc=Choque-se contra um bloco de Rocha Matriz para entrar no Submundo
-bookGui.physicsbook.defaulttitle=Livro de Física
+book.physicsbook.defaulttitle=Livro de Física
 
 fluid.nacre_fluid=Nacre
 fluid.mana_fluid=Mana
@@ -91,4 +91,4 @@ potion.wizardry.time_slow=Desenrolamento
 
 item_group.wizardry=Wizardry
 
-wizardry.misc.module=Feitiço:
+wizardry.misc.moduleSet=Feitiço:

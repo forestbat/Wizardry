@@ -1,24 +1,20 @@
 package com.teamwizardry.wizardry.common.core;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.ConfigValues;
 import com.teamwizardry.wizardry.api.Constants.MISC;
-import com.teamwizardry.wizardry.api.block.ManaTracker;
+import com.teamwizardry.wizardry.api.block.FluidTracker;
 import com.teamwizardry.wizardry.api.events.SpellCastEvent;
 import com.teamwizardry.wizardry.api.spell.IContinuousModule;
 import com.teamwizardry.wizardry.api.spell.SpellData;
-import com.teamwizardry.wizardry.api.spell.module.Module;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
+import com.teamwizardry.wizardry.api.spell.SpellUtils;
 import com.teamwizardry.wizardry.api.util.PosUtils;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.TeleportUtil;
 import com.teamwizardry.wizardry.common.entity.EntityFairy;
 import com.teamwizardry.wizardry.crafting.burnable.EntityBurnableItem;
 import com.teamwizardry.wizardry.init.ModPotions;
-
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -39,6 +35,10 @@ import net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
+
 public class EventHandler {
 
 	private final HashSet<UUID> fallResetter = new HashSet<>();
@@ -52,16 +52,13 @@ public class EventHandler {
 
 	@SubscribeEvent
 	public void redstoneHandler(EntityJoinWorldEvent event) {
-		if (event.getWorld().isRemote)
-		{
+		if (event.getWorld().isRemote) {
 			return;
 		}
-		
-		if (event.getEntity() instanceof EntityItem && !(event.getEntity() instanceof EntityBurnableItem))
-		{
+
+		if (event.getEntity() instanceof EntityItem && !(event.getEntity() instanceof EntityBurnableItem)) {
 			EntityItem item = (EntityItem) event.getEntity();
-			if (EntityBurnableItem.isBurnable(item.getItem()))
-			{
+			if (EntityBurnableItem.isBurnable(item.getItem())) {
 				EntityBurnableItem newItem = new EntityBurnableItem(event.getWorld(), item.posX, item.posY, item.posZ, item.getItem());
 				newItem.motionX = item.motionX;
 				newItem.motionY = item.motionY;
@@ -76,7 +73,7 @@ public class EventHandler {
 	@SubscribeEvent
 	public void tickEvent(WorldTickEvent event) {
 		if (event.phase == Phase.END) {
-			ManaTracker.INSTANCE.tick(event.world);
+			FluidTracker.INSTANCE.tick(event.world);
 		}
 	}
 
@@ -130,15 +127,15 @@ public class EventHandler {
 
 	@SubscribeEvent
 	public void fairyAmbush(SpellCastEvent event) {
-		Entity caster = event.spell.getData(SpellData.DefaultKeys.CASTER);
+		Entity caster = event.getSpellData().getData(SpellData.DefaultKeys.CASTER);
 		int chance = 5;
-		for (Module module : event.module.getAllChildModules())
-			if (module instanceof IContinuousModule) {
+		for (SpellRing spellRing : SpellUtils.getAllSpellRings(event.getSpellRing()))
+			if (spellRing instanceof IContinuousModule) {
 				chance = 1000;
 				break;
 			}
 		if (RandUtil.nextInt(chance) == 0 && caster != null) {
-			List<EntityFairy> fairyList = event.spell.world.getEntitiesWithinAABB(EntityFairy.class, new AxisAlignedBB(caster.getPosition()).grow(64, 64, 64));
+			List<EntityFairy> fairyList = event.getSpellData().world.getEntitiesWithinAABB(EntityFairy.class, new AxisAlignedBB(caster.getPosition()).grow(64, 64, 64));
 			if (fairyList.isEmpty()) return;
 			EntityFairy fairy = fairyList.get(RandUtil.nextInt(fairyList.size() - 1));
 			if (fairy == null) return;

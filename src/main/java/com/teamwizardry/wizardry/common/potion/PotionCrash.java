@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public class PotionCrash extends PotionBase {
 
@@ -55,7 +55,7 @@ public class PotionCrash extends PotionBase {
 			e.setDamageMultiplier(e.getDamageMultiplier() / (crash.getAmplifier() + 2));
 			List<EntityLivingBase> entities = entitySource.world.getEntitiesWithinAABB(EntityLivingBase.class, entitySource.getEntityBoundingBox().grow(range * 2));
 			entities.stream().filter(entity -> entity != entitySource && entity.onGround).forEach(entity -> {
- 				entity.attackEntityFrom(damageSourceEarthquake(entitySource), range);
+				entity.attackEntityFrom(damageSourceEarthquake(entitySource), range);
 				entity.motionY = range / 10.0;
 				entity.velocityChanged = true;
 			});

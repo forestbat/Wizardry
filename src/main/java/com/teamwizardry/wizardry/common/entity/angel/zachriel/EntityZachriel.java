@@ -33,7 +33,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.awt.*;
@@ -44,19 +43,20 @@ import java.util.UUID;
 import static net.minecraftforge.common.util.Constants.NBT.TAG_COMPOUND;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 @SaveInPlace
 public class EntityZachriel extends EntityAngel {
 
+	public static final float burstDamage = 10;
+	public static final float burstCorruptionScaling = 0.25F;
+	private static int timeReverseTick = 200;
 	public boolean saveTime = false;
 	public boolean reverseTime = false;
-
 	/**
 	 * Number of times Zachriel has saved the arena
 	 */
 	public int numSaves = 0;
-	private static int timeReverseTick = 200;
 	/**
 	 * Number of times Zachriel has loaded the last save
 	 */
@@ -65,7 +65,6 @@ public class EntityZachriel extends EntityAngel {
 	 * List of health percentages when Zachriel will save the arena
 	 */
 	public float[] saveTimes = new float[]{5F / 6F, 1F / 2F, 1F / 6F};
-
 	public int nextBurst = 0;
 	public int nextBurstSave = -1;
 	/**
@@ -73,8 +72,6 @@ public class EntityZachriel extends EntityAngel {
 	 */
 	public float[] loadTimes = new float[]{2F / 3F, 1F / 3F, 1F / getMaxHealth()};
 	public int burstTimer = 0;
-	public static final float burstDamage = 10;
-	public static final float burstCorruptionScaling = 0.25F;
 	public float[] burstLevels = new float[]{0.95F, 0.85F, 0.75F, 0.65F, 0.55F, 0.45F, 0.35F, 0.25F, 0.15F, 0.05F};
 	public Arena arena = null;
 
@@ -210,7 +207,6 @@ public class EntityZachriel extends EntityAngel {
 			}
 
 
-
 			for (EntityLivingBase targeted : arena.getVictims())
 				nemezDrive.trackEntity(targeted);
 
@@ -282,14 +278,14 @@ public class EntityZachriel extends EntityAngel {
 	}
 
 	@Override
-	public void writeCustomNBT(@NotNull NBTTagCompound compound) {
+	public void writeCustomNBT(@Nonnull NBTTagCompound compound) {
 		super.writeCustomNBT(compound);
 		compound.setTag("save", AbstractSaveHandler.writeAutoNBT(this, true));
 		compound.setTag("nemez", nemezDrive.serializeNBT());
 	}
 
 	@Override
-	public void readCustomNBT(@NotNull NBTTagCompound compound) {
+	public void readCustomNBT(@Nonnull NBTTagCompound compound) {
 		super.readCustomNBT(compound);
 		AbstractSaveHandler.readAutoNBT(this, compound.getCompoundTag("save"), true);
 		nemezDrive.deserializeNBT(compound.getTagList("nemez", TAG_COMPOUND));

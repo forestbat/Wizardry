@@ -1,6 +1,7 @@
 package com.teamwizardry.wizardry.common.block;
 
 import com.teamwizardry.librarianlib.features.base.block.tile.BlockModContainer;
+import com.teamwizardry.wizardry.api.capability.CapManager;
 import com.teamwizardry.wizardry.client.render.block.TilePearlHolderRenderer;
 import com.teamwizardry.wizardry.common.tile.TilePearlHolder;
 import com.teamwizardry.wizardry.init.ModItems;
@@ -26,7 +27,7 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import javax.annotation.Nullable;
 
 /**
- * Created by Saad on 5/7/2016.
+ * Created by Demoniaque on 5/7/2016.
  */
 public class BlockPearlHolder extends BlockModContainer {
 
@@ -52,7 +53,7 @@ public class BlockPearlHolder extends BlockModContainer {
 			return;
 		}
 
-		ItemStack itemStack = holder.pearl;
+		ItemStack itemStack = holder.getItemStack();
 		if (itemStack != null && !itemStack.isEmpty()) {
 			InventoryHelper.spawnItemStack(worldIn, pos.getX(), pos.getY(), pos.getZ(), itemStack);
 		}
@@ -66,16 +67,19 @@ public class BlockPearlHolder extends BlockModContainer {
 		if (!worldIn.isRemote) {
 			TilePearlHolder te = getTE(worldIn, pos);
 
-			if ((te.pearl == null || te.pearl.isEmpty())) {
-				if (heldItem.getItem() == ModItems.MANA_ORB || heldItem.getItem() == ModItems.PEARL_NACRE) {
-					te.pearl = heldItem.copy();
-					te.pearl.setCount(1);
+			if (!te.containsSomething()) {
+				if (heldItem.getItem() == ModItems.ORB || heldItem.getItem() == ModItems.PEARL_NACRE) {
+					te.setItemStack(heldItem.copy());
+					te.getItemStack().setCount(1);
 					heldItem.shrink(1);
 				} else return false;
 
 			} else {
-				ItemStack stack = te.pearl.copy();
-				te.pearl = ItemStack.EMPTY;
+				ItemStack stack = te.getItemStack().copy();
+				CapManager manager1 = new CapManager(stack).setEntity(playerIn);
+				manager1.sync();
+
+				te.setItemStack(ItemStack.EMPTY);
 				if (playerIn.inventory.addItemStackToInventory(stack)) playerIn.openContainer.detectAndSendChanges();
 				else {
 					EntityItem entityItem = new EntityItem(worldIn, pos.getX(), pos.getY() + 1, pos.getZ(), stack);

@@ -1,45 +1,61 @@
 package com.teamwizardry.wizardry.common.tile;
 
 import com.teamwizardry.librarianlib.features.autoregister.TileRegister;
-import com.teamwizardry.librarianlib.features.network.PacketHandler;
+import com.teamwizardry.librarianlib.features.base.block.tile.module.ModuleInventory;
+import com.teamwizardry.librarianlib.features.saving.Module;
 import com.teamwizardry.librarianlib.features.saving.Save;
 import com.teamwizardry.wizardry.api.block.TileManaInteracter;
-import com.teamwizardry.wizardry.api.capability.CapManager;
 import com.teamwizardry.wizardry.api.capability.IWizardryCapability;
 import com.teamwizardry.wizardry.api.capability.WizardryCapabilityProvider;
 import com.teamwizardry.wizardry.api.item.ICooldown;
+import com.teamwizardry.wizardry.api.item.IManaCell;
 import com.teamwizardry.wizardry.api.spell.SpellData;
 import com.teamwizardry.wizardry.api.spell.SpellUtils;
-import com.teamwizardry.wizardry.api.util.RandUtil;
-import com.teamwizardry.wizardry.common.network.PacketExplode;
+import com.teamwizardry.wizardry.common.item.ItemNacrePearl;
+import com.teamwizardry.wizardry.common.item.ItemOrb;
 import com.teamwizardry.wizardry.init.ModBlocks;
-import com.teamwizardry.wizardry.init.ModItems;
-import com.teamwizardry.wizardry.init.ModSounds;
 import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraftforge.fml.common.network.NetworkRegistry;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.items.ItemStackHandler;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.awt.*;
 
 import static com.teamwizardry.wizardry.api.spell.SpellData.DefaultKeys.*;
 
 /**
- * Created by Saad on 5/7/2016.
+ * Created by Demoniaque on 5/7/2016.
  */
 @TileRegister("pedestal")
 public class TilePearlHolder extends TileManaInteracter implements ICooldown {
 
-	@Save
-	@NotNull
-	public ItemStack pearl = ItemStack.EMPTY;
+	@Module
+	public ModuleInventory inventory = new ModuleInventory(new ItemStackHandler() {
+		@Override
+		protected int getStackLimit(int slot, @Nonnull ItemStack stack) {
+			if (stack.getItem() instanceof IManaCell
+					|| stack.getItem() instanceof ItemNacrePearl)
+				return super.getStackLimit(slot, stack);
+			else return 0;
+		}
+	});
 
+	@Nullable
+	@Override
+	public IWizardryCapability getWizardryCap() {
+		if (containsAnyOrb()) {
+			return WizardryCapabilityProvider.getCap(getItemStack());
+		}
+		return null;
+	}
+
+	/**
+	 * isPartOfStructure defines if this holder is part of a structure
+	 * and cannot be used for mana networking outside of its own structure
+	 */
 	@Save
-	public boolean isBenign = false;
+	public boolean isPartOfStructure = false;
 
 	@Save
 	@Nullable
@@ -49,70 +65,26 @@ public class TilePearlHolder extends TileManaInteracter implements ICooldown {
 		super(300, 300);
 	}
 
-	@Nullable
+	@Nonnull
 	@Override
-	public IWizardryCapability getCap() {
-		if (!pearl.isEmpty() && pearl.getItem() == ModItems.MANA_ORB) {
-			return WizardryCapabilityProvider.getCap(pearl);
-		}
-		return null;
+	public Vec3d getOffset() {
+		return new Vec3d(0, 0.5, 0);
 	}
 
 	@Override
 	public void update() {
 		super.update();
-		if (pearl.getItem() == ModItems.MANA_ORB) {
-
-			if (!isBenign)
-				for (BlockPos pearlHolders : getNearestSuckables(TilePearlHolder.class, getWorld(), getPos(), false)) {
-					TileEntity tile = getWorld().getTileEntity(pearlHolders);
-					if (tile != null && tile instanceof TilePearlHolder && !((TilePearlHolder) tile).isBenign) {
-						if (structurePos == null && ((TilePearlHolder) tile).structurePos == null)
-							suckManaFrom(getWorld(), getPos(), getCap(), pearlHolders, 1, true);
-					}
-				}
-
-			for (BlockPos target : getNearestSuckables(TileManaBattery.class, getWorld(), getPos(), false)) {
-				if (target.equals(structurePos)) continue;
-				suckManaFrom(getWorld(), getPos(), getCap(), target, 1, false);
-			}
-
-			if (isBenign && new CapManager(getCap()).isManaEmpty()) {
-				pearl = ItemStack.EMPTY;
-				markDirty();
-
-				world.playSound(null, pos.getX(), pos.getY(), pos.getZ(), ModSounds.GLASS_BREAK, SoundCategory.AMBIENT, 0.5F, (RandUtil.nextFloat() * 0.4F) + 0.8F);
-				PacketHandler.NETWORK.sendToAllAround(new PacketExplode(new Vec3d(getPos()).addVector(0.5, 0.5, 0.5), Color.CYAN, Color.BLUE, 0.5, 0.5, 50, 50, 10, true),
-						new NetworkRegistry.TargetPoint(world.provider.getDimension(), pos.getX(), pos.getY(), pos.getZ(), 256));
-			}
-
-
-		} else if (pearl.getItem() == ModItems.PEARL_NACRE) {
+		if (containsNacrePearl()) {
 			if (world.isRemote) return;
 
-			updateCooldown(pearl);
+			updateCooldown(getItemStack());
 
-			IWizardryCapability pearlCap = WizardryCapabilityProvider.getCap(pearl);
-			if (pearlCap == null || pearlCap.getMana() > pearlCap.getMaxMana() || isBenign || structurePos != null)
+			IWizardryCapability pearlCap = WizardryCapabilityProvider.getCap(getItemStack());
+			if (pearlCap == null || pearlCap.getMana() > pearlCap.getMaxMana() || isPartOfStructure || structurePos != null)
 				return;
 
-			boolean suckedFromHolder = false;
-			for (BlockPos pearlHolders : getNearestSuckables(TilePearlHolder.class, getWorld(), getPos(), false)) {
-				TileEntity tile = getWorld().getTileEntity(pearlHolders);
-				if (tile != null && tile instanceof TilePearlHolder && !((TilePearlHolder) tile).isBenign && structurePos == null && ((TilePearlHolder) tile).structurePos == null) {
-					suckedFromHolder = true;
-					suckManaFrom(getWorld(), getPos(), pearlCap, pearlHolders, 1, false);
-				}
-			}
-
-			if (!suckedFromHolder) {
-				for (BlockPos target : getNearestSuckables(TileManaBattery.class, getWorld(), getPos(), false)) {
-					suckManaFrom(getWorld(), getPos(), pearlCap, target, 10, false);
-				}
-			}
-
 			if (world.isBlockPowered(getPos())) return;
-			if (isCoolingDown(pearl)) return;
+			if (isCoolingDown(getItemStack())) return;
 			if (pearlCap.getMana() == 0) return;
 
 			BlockPos closestMagnet = null;
@@ -133,9 +105,41 @@ public class TilePearlHolder extends TileManaInteracter implements ICooldown {
 				spell.addData(LOOK, direction);
 				spell.addData(ORIGIN, new Vec3d(getPos()).addVector(0.5, 1.5, 0.5));
 				spell.addData(CAPABILITY, pearlCap);
-				SpellUtils.runSpell(pearl, spell);
-				setCooldown(world, null, null, pearl, spell);
+				SpellUtils.runSpell(getItemStack(), spell);
+				setCooldown(world, null, null, getItemStack(), spell);
 			}
 		}
+	}
+
+	public boolean containsSomething() {
+		return containsAnyOrb() || containsNacrePearl();
+	}
+
+	public boolean containsAnyOrb() {
+		return getItemStack().getItem() instanceof ItemOrb;
+	}
+
+	public boolean containsGlassOrb() {
+		return getItemStack().getItem() instanceof ItemOrb && getItemStack().getItemDamage() == 0;
+	}
+
+	public boolean containsManaOrb() {
+		return getItemStack().getItem() instanceof ItemOrb && getItemStack().getItemDamage() == 1;
+	}
+
+	public boolean containsNacrePearl() {
+		return getItemStack().getItem() instanceof ItemNacrePearl;
+	}
+
+	public ItemStack getItemStack() {
+		return inventory.getHandler().getStackInSlot(0);
+	}
+
+	public void setItemStack(ItemStack stack) {
+		inventory.getHandler().setStackInSlot(0, stack);
+	}
+
+	public ItemStack extractItemStack() {
+		return inventory.getHandler().extractItem(0, 1, false);
 	}
 }

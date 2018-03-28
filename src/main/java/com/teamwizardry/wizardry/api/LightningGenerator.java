@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 /**
- * Created by LordSaad.
+ * Created by Demoniaque.
  */
 public class LightningGenerator {
 
 	public static final int POINTS_PER_DIST = 6;
-	
+
 	private Vec3d point1;
 	private Vec3d point2;
 	private RandUtilSeed rand;

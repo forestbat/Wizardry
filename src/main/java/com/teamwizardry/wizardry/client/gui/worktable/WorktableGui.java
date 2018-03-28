@@ -19,6 +19,7 @@ import com.teamwizardry.librarianlib.features.sprite.Sprite;
 import com.teamwizardry.librarianlib.features.sprite.Texture;
 import com.teamwizardry.wizardry.Wizardry;
 import com.teamwizardry.wizardry.api.spell.SpellBuilder;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.Module;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
 import com.teamwizardry.wizardry.api.spell.module.ModuleRegistry;
@@ -47,11 +48,11 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Created by Saad on 6/17/2016.
+ * Created by Demoniaque on 6/17/2016.
  */
 public class WorktableGui extends GuiBase {
 
-	private static final Texture BACKGROUND_TEXTURE = new Texture(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/table_background.png"));
+	private static final Texture BACKGROUND_TEXTURE = new Texture(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/table.png"));
 	private static final Sprite BACKGROUND_SPRITE = BACKGROUND_TEXTURE.getSprite("bg", 480, 224);
 	private static final Sprite SCROLL_BAR = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/scroll_bar.png"));
 	private static final Sprite SCROLL_BAR_GRIP = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/scroll_bar_bar.png"));
@@ -60,13 +61,12 @@ public class WorktableGui extends GuiBase {
 	private static final Sprite BUTTON_NORMAL = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/button.png"));
 	private static final Sprite BUTTON_HIGHLIGHTED = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/button_highlighted.png"));
 	private static final Sprite BUTTON_PRESSED = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/button_pressed.png"));
+	public BlockPos worktablePos;
 	ComponentVoid paper;
 	GuiComponent selectedComponent;
 	BiMap<GuiComponent, UUID> paperComponents = HashBiMap.create();
 	HashMap<UUID, UUID> componentLinks = new HashMap<>();
-	private HashSet<ArrayList<Module>> compiledSpell = new HashSet<>();
 	ComponentWhitelistedModifiers whitelistedModifiers;
-	public BlockPos worktablePos;
 
 	public WorktableGui(BlockPos worktablePos) {
 		super(480, 224);
@@ -86,20 +86,23 @@ public class WorktableGui extends GuiBase {
 
 		TileEntity tile = Minecraft.getMinecraft().world.getTileEntity(worktablePos);
 		if (tile != null && tile instanceof TileMagiciansWorktable) {
-			for (Map.Entry<Module, UUID> entrySet : ((TileMagiciansWorktable) tile).paperComponents.entrySet()) {
-				TableModule module = new TableModule(this, null, entrySet.getKey(), true, false);
+			for (Map.Entry<SpellRing, UUID> entrySet : ((TileMagiciansWorktable) tile).paperComponents.entrySet()) {
+				Module module = entrySet.getKey().getModule();
+				if (module == null) continue;
 
-				if (entrySet.getKey().attributes.hasKey("worktable_x") && entrySet.getKey().attributes.hasKey("worktable_y")) {
-					double x = entrySet.getKey().attributes.getDouble("worktable_x");
-					double y = entrySet.getKey().attributes.getDouble("worktable_y");
-					module.component.setPos(new Vec2d(x, y));
+				TableModule tableModule = new TableModule(this, null, module, true, false);
+
+				if (entrySet.getKey().getInformationTag().hasKey("worktable_x") && entrySet.getKey().getInformationTag().hasKey("worktable_y")) {
+					double x = entrySet.getKey().getInformationTag().getDouble("worktable_x");
+					double y = entrySet.getKey().getInformationTag().getDouble("worktable_y");
+					tableModule.component.setPos(new Vec2d(x, y));
 				}
 
-				DragMixin drag = new DragMixin(module.component, vec2d -> vec2d);
+				DragMixin drag = new DragMixin(tableModule.component, vec2d -> vec2d);
 				drag.setDragOffset(new Vec2d(6, 6));
 
-				paperComponents.put(module.component, entrySet.getValue());
-				paper.add(module.component);
+				paperComponents.put(tableModule.component, entrySet.getValue());
+				paper.add(tableModule.component);
 			}
 
 			for (Map.Entry<UUID, UUID> entrySet : ((TileMagiciansWorktable) tile).componentLinks.entrySet()) {
@@ -177,10 +180,13 @@ public class WorktableGui extends GuiBase {
 
 			HashSet<GuiComponent> heads = getHeads();
 			if (heads.isEmpty()) return;
-			compiledSpell.clear();
+
+			List<List<Module>> compiledSpell = new ArrayList<>();
+
 			for (GuiComponent component : heads) {
 				ArrayList<Module> stream = new ArrayList<>();
 				compileModule(stream, component);
+
 				compiledSpell.add(stream);
 			}
 
@@ -189,7 +195,7 @@ public class WorktableGui extends GuiBase {
 			for (ItemStack stack : Minecraft.getMinecraft().player.inventory.mainInventory) {
 				if (stack.getItem() == ModItems.BOOK) {
 					int slot = Minecraft.getMinecraft().player.inventory.getSlotFor(stack);
-					PacketHandler.NETWORK.sendToServer(new PacketSendSpellToBook(slot, (ArrayList<ItemStack>) builder.getInventory()));
+					PacketHandler.NETWORK.sendToServer(new PacketSendSpellToBook(slot, builder.getSpell()));
 				}
 			}
 
@@ -200,7 +206,7 @@ public class WorktableGui extends GuiBase {
 			getMainComponents().add(fakePaper);
 
 			ComponentVoid bookIconMask = new ComponentVoid(0, -100, 180, 100);
-			ComponentSprite bookIcon = new ComponentSprite(new Sprite(new ResourceLocation(Wizardry.MODID, "textures/items/physics_book.png")), (int) ((bookIconMask.getSize().getX() / 2.0) - 16), (int) (bookIconMask.getSize().getY() + 50), 32, 32);
+			ComponentSprite bookIcon = new ComponentSprite(new Sprite(new ResourceLocation(Wizardry.MODID, "textures/items/book.png")), (int) ((bookIconMask.getSize().getX() / 2.0) - 16), (int) (bookIconMask.getSize().getY() + 50), 32, 32);
 			{
 				bookIcon.getTransform().setTranslateZ(200);
 				bookIconMask.clipping.setClipToBounds(true);
@@ -299,24 +305,25 @@ public class WorktableGui extends GuiBase {
 	}
 
 	public void sync() {
-		HashMap<Module, UUID> convertComponents = new HashMap<>();
-
-		for (Map.Entry<GuiComponent, UUID> entrySet : paperComponents.entrySet()) {
-			Module module1 = getModule(entrySet.getKey());
-			if (module1 == null) continue;
-			module1.attributes.setDouble("worktable_x", entrySet.getKey().getPos().getX());
-			module1.attributes.setDouble("worktable_y", entrySet.getKey().getPos().getY());
-			convertComponents.put(module1, entrySet.getValue());
-		}
-
 		if (!Minecraft.getMinecraft().world.isBlockLoaded(worktablePos)) return;
 		IBlockState state = Minecraft.getMinecraft().world.getBlockState(worktablePos);
 
 		if (state.getBlock() != ModBlocks.MAGICIANS_WORKTABLE) return;
 
 		TileEntity table = Minecraft.getMinecraft().world.getTileEntity(worktablePos);
-		if (table == null) return;
 		if (!(table instanceof TileMagiciansWorktable)) return;
+
+		HashMap<SpellRing, UUID> convertComponents = new HashMap<>();
+
+		for (Map.Entry<GuiComponent, UUID> entrySet : paperComponents.entrySet()) {
+			Module module1 = getModule(entrySet.getKey());
+			if (module1 == null) continue;
+			SpellRing ring = new SpellRing(module1);
+
+			ring.getInformationTag().setDouble("worktable_x", entrySet.getKey().getPos().getX());
+			ring.getInformationTag().setDouble("worktable_y", entrySet.getKey().getPos().getY());
+			convertComponents.put(ring, entrySet.getValue());
+		}
 
 		((TileMagiciansWorktable) table).componentLinks = componentLinks;
 		((TileMagiciansWorktable) table).paperComponents = convertComponents;
@@ -344,7 +351,7 @@ public class WorktableGui extends GuiBase {
 			if (component.hasData(Integer.class, modifier.getID())) {
 				int x = component.getData(Integer.class, modifier.getID());
 				for (int i = 0; i < x; i++) {
-					stream.add(modifier.copy());
+					stream.add(modifier);
 				}
 			}
 		}
@@ -388,7 +395,7 @@ public class WorktableGui extends GuiBase {
 
 		ArrayList<GuiComponent> tmp = new ArrayList<>();
 		for (Module module : ModuleRegistry.INSTANCE.getModules(type)) {
-			TableModule item = new TableModule(this, parent, module.copy(), false, true);
+			TableModule item = new TableModule(this, parent, module, false, true);
 			tmp.add(item.component);
 		}
 
@@ -431,7 +438,7 @@ public class WorktableGui extends GuiBase {
 
 			ArrayList<GuiComponent> tmp = new ArrayList<>();
 			for (Module module : ModuleRegistry.INSTANCE.getModules(type)) {
-				TableModule item = new TableModule(this, parent, module.copy(), false, false);
+				TableModule item = new TableModule(this, parent, module, false, false);
 				tmp.add(item.component);
 			}
 			ArrayList<GuiComponent> scrollable = (ArrayList<GuiComponent>) Utils.getVisibleComponents(tmp, percent);
@@ -455,7 +462,7 @@ public class WorktableGui extends GuiBase {
 
 			ArrayList<GuiComponent> tmp = new ArrayList<>();
 			for (Module module : ModuleRegistry.INSTANCE.getModules(type)) {
-				TableModule item = new TableModule(this, parent, module.copy(), false, false);
+				TableModule item = new TableModule(this, parent, module, false, false);
 				tmp.add(item.component);
 			}
 			ArrayList<GuiComponent> scrollable = (ArrayList<GuiComponent>) Utils.getVisibleComponents(tmp, percent);
@@ -471,7 +478,7 @@ public class WorktableGui extends GuiBase {
 	public Module getModule(@Nullable GuiComponent component) {
 		if (component == null) return null;
 		for (Object object : component.getTagList()) {
-			if (object instanceof Module) return ((Module) object).copy();
+			if (object instanceof Module) return ((Module) object);
 		}
 		return null;
 	}

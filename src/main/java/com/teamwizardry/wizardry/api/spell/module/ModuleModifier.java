@@ -1,19 +1,17 @@
 package com.teamwizardry.wizardry.api.spell.module;
 
 import com.teamwizardry.librarianlib.core.LibrarianLib;
+import com.teamwizardry.wizardry.api.spell.SpellData;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 
 import javax.annotation.Nonnull;
 
 public abstract class ModuleModifier extends Module {
+
 	@Nonnull
 	@Override
 	public ModuleType getModuleType() {
 		return ModuleType.MODIFIER;
-	}
-
-	public void apply(@Nonnull Module module)
-	{
-		module.modifiersToApply.addAll(modifiers);
 	}
 
 	public String getShortHandName() {
@@ -22,5 +20,15 @@ public abstract class ModuleModifier extends Module {
 
 	public String getShortHandKey() {
 		return "wizardry.spell." + getID() + ".short";
+	}
+
+	@Override
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		return true;
+	}
+
+	@Override
+	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+
 	}
 }
