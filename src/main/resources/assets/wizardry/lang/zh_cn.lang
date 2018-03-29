@@ -17,7 +17,7 @@ tile.wizardry:unicorn_trail.name=独角兽足迹
 
 entity.fairy.name=精灵
 entity.spirit_wight.name=天魔
-entity.spirit_blight.name=Spirit Blight
+entity.spirit_blight.name=灵光
 entity.unicorn.name=独角兽
 entity.spell_projectile.name=抛出的法术
 
@@ -274,14 +274,14 @@ wizardry.book.steps.garbs.content2=斗篷虽然又漂亮又强大，但它毫无
 wizardry.book.steps.nacre.title=第三步：炫珠
 wizardry.book.steps.nacre.desc=了解炫珠和它的魔法属性
 wizardry.book.steps.nacre.content0=珍珠母液，就是那种温厚，泛白，闪着彩色光芒可以形成珍珠的液体，能够完美地导引魔力。<br>只需将一颗金粒扔进液态魔力当中，它们就会混合在一起，变成这种散发辉光的液体。<br>告诉你为什么需要珍珠母液：如果我们用它做出了“炫珠”，那么就可以对其注入法术以施法了。
-wizardry.book.steps.nacre.content1=To make a nacre pearl, take a glass orb and throw it in the milky liquid. There are six levels of nacre pearl quality. Wasted is the worst, then drained, flawed, decent, potent, and finally, Apex. You ideally want Apex Pearls, but that takes careful effort to make. The worse the quality of the pearl, the weaker the spell and the more mana it consumes. To get the highest pearl quality, you must keep the glass orb in the nacre for &oexactly&r 30 seconds. Any more reduces quality, but any less does too. This isn't required, of course. Apex pearls are good, but  you will do fine with potent and decent quality pearls.<br>You will be using these pearls later on in spell infusion.
+wizardry.book.steps.nacre.content1=为了做炫珠，你需要做一颗空玻璃珠然后将它扔进珍珠母液中。炫珠从低到高有六个等级，废物，枯竭，瑕疵，优良，强效，完美。你一定想要完美炫珠，但是需要小心制作。炫珠质量越差，用其施展的法术越弱，消耗的魔力也越多。为了得到最好的完美炫珠，你需要把玻璃珠泡在珍珠母液中&o正好&r 30秒，任何延迟或者时间不够都会降低炫珠的等级，当然你也不必有强迫症，完美炫珠虽好，但是优良或者强效的也不错了。<br>这些炫珠稍后将用于法术的注入。
 
-wizardry.book.steps.structures.title=Step 4: Structures
-wizardry.book.steps.structures.desc=Learn about the structure you will need to build
-wizardry.book.steps.structures.content0=You've got your mana, you've got your crooked haloInv, you've got your beautiful cape, and you've got your shimmering nacre pearls. But how do you actually infuse a spell into a pearl? Well, we just need one last device before we get there.
-wizardry.book.steps.structures.content1=The first structure is a Mana Battery. This structure is a massive reservoir of mana.<br>As any wizard will quickly learn, this is the center of your powers. The Mana Battery's core can absorb mana far more efficiently than any other method of storage. To fill it, set mana orbs on the pillars in its structure; it will discharge its power to mana orbs outside of the battery's pillars, allowing for automatic and efficient mana transfer out of the battery.
-wizardry.book.steps.structures.content2=Do note that once you place the mana battery block down, you will see red dots highlighting where blocks of the structures are going to be. Shift right click the block to display a hologram of the structure itself. Adjust the battery's position as you please. Once you finish the structure, no red dots should be flashing.
-wizardry.book.steps.structures.content3=This structure is technically not required. You could manually replace emptied mana orbs in your other structures to feed them mana, but you'll quickly find that that task is very annoying and tedious to do.
+wizardry.book.steps.structures.title=第四步：结构
+wizardry.book.steps.structures.desc=了解你需要建造的多方块结构
+wizardry.book.steps.structures.content0=你有了魔力，扭成一团的光环，和美丽的斗篷，还有闪亮的炫珠。那么如何将咒语注入到炫珠当中呢？在此之前我们需要一个新设备。
+wizardry.book.steps.structures.content1=第一个结构是魔力电池，大容量的魔力存储器。<br>任何巫师都能很快学到，这将是你能量的中心。魔力电池的核心比其他任何方式存取速度都要快。将魔力宝珠放在电池结构的柱子上以充满它；在电池结构的柱子之外它则会反过来充满魔力宝珠，高度自动，非常快速。
+wizardry.book.steps.structures.content2=注意只要你将魔力电池方块放下，就可以在周围看到高亮红点，指示结构所需方块所在的位置；Shift右击魔力电池将会出现一个全息图显示结构本身。根据你的需求调整电池的位置，当结构搭建完成之后，不会看到任何红点闪烁。
+wizardry.book.steps.structures.content3=不一定需要这个多方块结构，你可以简单地把用完的魔力宝珠放在别的结构上充能，但你很快就会发现，这么做真是慢死了。
 wizardry.book.steps.structures.content4=The last structure you will need, and arguably the most important one, is the Crafting Altar. This structure is where you will follow spell recipes, then cap them off with a nacre pearl, to create a pearl capable of casting your spell.<br>How this is done will be recounted in the next entries. For now, build the structure very close by the mana battery structure and fill its pillars with glass orbs or mana orbs to fill the Crafting Plate up with mana.
 wizardry.book.steps.structures.content5=Note that the mana battery will be able to fill up the orbs in the Crafting Altar's pillars automatically if the battery has been fed with mana. The orbs inside the Altar's structure will fill up the crafting plate.
 
