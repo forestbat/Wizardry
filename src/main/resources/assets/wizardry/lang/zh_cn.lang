@@ -81,6 +81,19 @@ item.wizardry:repulsion_bomb.name=排斥炸弹
 item.wizardry:vortex_bomb.name=涡旋炸弹
 item.wizardry:sky_dust.name=浮尘
 
+item.wizardry:glass_orb.fill.0.name=玻璃珠
+item.wizardry:mana_orb.fill.0.name=魔力宝珠 0%
+item.wizardry:mana_orb.fill.10.name=魔力宝珠 10%
+item.wizardry:mana_orb.fill.20.name=魔力宝珠 20%
+item.wizardry:mana_orb.fill.30.name=魔力宝珠 30%
+item.wizardry:mana_orb.fill.40.name=魔力宝珠 40%
+item.wizardry:mana_orb.fill.50.name=魔力宝珠 50%
+item.wizardry:mana_orb.fill.60.name=魔力宝珠 60%
+item.wizardry:mana_orb.fill.70.name=魔力宝珠 70%
+item.wizardry:mana_orb.fill.80.name=魔力宝珠 80%
+item.wizardry:mana_orb.fill.90.name=魔力宝珠 90%
+item.wizardry:mana_orb.fill.100.name=魔力宝珠 100%
+
 item.wizardry:wisdom_stick.name=智木棍
 item.wizardry:wisdom_wood_door.name=智木门
 tile.wizardry:wisdom_wood_log.name=智木原木
@@ -140,10 +153,11 @@ jei.recipe.consumes.wizardry:mana=消耗掉使用的液态魔力
 jei.recipe.radius.wizardry:mana=需要一个 %1$dx%1$d 液体源方块
 jei.recipe.wizardry:fire=物品燃烧
 jei.recipe.tooltip.wizardry:fire=火
-
+jei.recipe.wizardry:fluid=流体合成
 
 wizardry.misc.moduleSet=法术:
 wizardry.misc.sneak=<潜行查看信息>
+wizardry.misc.ctrl=<按下Ctrl查看更多信息>
 wizardry.misc.save=保存
 wizardry.misc.save_error=你的物品栏里没有巫师宝典！把宝典放进物品栏以正常保存。
 wizardry.misc.sneak_expanded=&7<- &8 Shift查看更多信息 &7 ->
@@ -152,6 +166,7 @@ wizardry.misc.update_checker0=巫师宝典有更新
 wizardry.misc.update_checker1=你的版本:
 wizardry.misc.update_checker2=新版本:
 wizardry.misc.structure_materials=需要材料
+wizardry.misc.attribute_range=范围：
 
 wizardry.spell.effect_anti_gravity_well.name=效果：反重力井
 wizardry.spell.effect_anti_gravity_well.desc=击退目标周围所有实体。
