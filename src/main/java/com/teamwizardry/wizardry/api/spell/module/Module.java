@@ -103,6 +103,29 @@ public abstract class Module {
 	public final String getDescription() {
 		return LibrarianLib.PROXY.translate(getDescriptionKey());
 	}
+	
+	@Nonnull
+	public List<String> getDetailedInfo()
+	{
+		List<String> detailedInfo = new ArrayList<>();
+		for (Attribute attribute : attributeRanges.keySet())
+		{
+			if (attribute.hasDetailedText())
+				detailedInfo.addAll(getDetailedInfo(attribute));
+		}
+		return detailedInfo;
+	}
+	
+	@Nonnull
+	public final List<String> getDetailedInfo(Attribute attribute)
+	{
+		List<String> detailedInfo = new ArrayList<>();
+		String infoKey = getDescriptionKey() + ".";
+		String rangeKey = "wizardry.misc.attribute_range";
+		detailedInfo.add(LibrarianLib.PROXY.translate(infoKey + attribute.getShortName()));
+		detailedInfo.add("    " + LibrarianLib.PROXY.translate(rangeKey) + attributeRanges.get(attribute));
+		return detailedInfo;
+	}
 
 	/**
 	 * Specify all applicable modifiers that can be applied to this module.
@@ -121,7 +144,7 @@ public abstract class Module {
 	public final String getDescriptionKey() {
 		return "wizardry.spell." + getID() + ".desc";
 	}
-
+	
 	@Nonnull
 	public final Color getPrimaryColor() {
 		return primaryColor;
@@ -147,16 +170,16 @@ public abstract class Module {
 		return attributeRanges.get(AttributeRegistry.MANA).base;
 	}
 
-	public final float getPowerMultiplier() {
-		return (int) attributeRanges.get(AttributeRegistry.POWER_MULTI).base;
+	public final double getPowerMultiplier() {
+		return attributeRanges.get(AttributeRegistry.POWER_MULTI).base;
 	}
 
-	public final float getManaMultiplier() {
-		return (int) attributeRanges.get(AttributeRegistry.MANA_MULTI).base;
+	public final double getManaMultiplier() {
+		return attributeRanges.get(AttributeRegistry.MANA_MULTI).base;
 	}
 
-	public final float getBurnoutMultiplier() {
-		return (int) attributeRanges.get(AttributeRegistry.BURNOUT_MULTI).base;
+	public final double getBurnoutMultiplier() {
+		return attributeRanges.get(AttributeRegistry.BURNOUT_MULTI).base;
 	}
 
 	@Nonnull
@@ -170,20 +193,6 @@ public abstract class Module {
 
 	public Map<Attribute, AttributeRange> getAttributeRanges() {
 		return attributeRanges;
-	}
-
-	/**
-	 * If a child has this as true, it's parents will not run their render methods.
-	 */
-	public boolean overrideParentRenders() {
-		return false;
-	}
-
-	/**
-	 * If a child has this as true, it's parents will not run their run methods.
-	 */
-	public boolean overrideParentRuns() {
-		return false;
 	}
 
 	public final void addAttribute(AttributeModifier attribute) {

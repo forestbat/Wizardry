@@ -43,12 +43,12 @@ import javax.annotation.Nonnull;
  * Created by Demoniaque.
  */
 @RegisterModule
-public class ModuleEffectFreeze extends ModuleEffect {
+public class ModuleEffectFrost extends ModuleEffect {
 
 	@Nonnull
 	@Override
 	public String getID() {
-		return "effect_freeze";
+		return "effect_frost";
 	}
 
 	@Override
@@ -63,8 +63,8 @@ public class ModuleEffectFreeze extends ModuleEffect {
 		BlockPos targetPos = spell.getTargetPos();
 		Entity caster = spell.getCaster();
 
-		double range = spellRing.getAttributeValue(AttributeRegistry.AREA, spell) / 2.0;
-		double time = spellRing.getAttributeValue(AttributeRegistry.DURATION, spell);
+		double range = spellRing.getAttributeValue(AttributeRegistry.AREA, spell) / 2;
+		double time = spellRing.getAttributeValue(AttributeRegistry.DURATION, spell) * 10;
 
 		if (!spellRing.taxCaster(spell)) return false;
 

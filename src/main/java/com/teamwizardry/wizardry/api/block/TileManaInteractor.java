@@ -37,11 +37,11 @@ import java.awt.*;
 import java.util.*;
 import java.util.function.BiPredicate;
 
-public class TileManaInteracter extends TileMod implements ITickable, IManaInteractable {
+public class TileManaInteractor extends TileMod implements ITickable, IManaInteractable {
 
 	private static Set<SuckRule> suckRules = new HashSet<>();
 
-	private static WeakHashMap<TileManaInteracter, WeakHashMap<TileManaInteracter, Double>> MANA_INTERACTABLES = new WeakHashMap<>();
+	private static WeakHashMap<TileManaInteractor, WeakHashMap<TileManaInteractor, Double>> MANA_INTERACTABLES = new WeakHashMap<>();
 
 	static {
 		addSuckRule(new SuckRule<>(1, true, 1, TilePearlHolder.class, TilePearlHolder.class, (tilePearlHolder, tilePearlHolder2) ->
@@ -64,8 +64,10 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 	public ManaModule cap;
 	@Save
 	public boolean allowOutsideSucking = true;
+	@Save
+	public int suckingCooldown = 0;
 
-	public TileManaInteracter(double maxMana, double maxBurnout) {
+	public TileManaInteractor(double maxMana, double maxBurnout) {
 		cap = new ManaModule(new CustomWizardryCapability(maxMana, maxBurnout));
 	}
 
@@ -77,20 +79,25 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 	public void update() {
 		if (world.isRemote) return;
 
+		if (suckingCooldown > 0) {
+			suckingCooldown--;
+			markDirty();
+		}
+
 		MANA_INTERACTABLES.putIfAbsent(this, new WeakHashMap<>());
 
-		WeakHashMap<TileManaInteracter, Double> distanceCache = MANA_INTERACTABLES.get(this);
+		WeakHashMap<TileManaInteractor, Double> distanceCache = MANA_INTERACTABLES.get(this);
 
 		if (distanceCache.isEmpty() && MANA_INTERACTABLES.size() > 1) {
 
-			for (TileManaInteracter key : MANA_INTERACTABLES.keySet()) {
+			for (TileManaInteractor key : MANA_INTERACTABLES.keySet()) {
 				if (key == this) continue;
 
 				double distance = key.getPos().distanceSq(getPos());
 				if (distance <= ConfigValues.networkLinkDistance * ConfigValues.networkLinkDistance) {
 					distanceCache.put(key, distance);
 
-					WeakHashMap<TileManaInteracter, Double> otherDistanceCache = MANA_INTERACTABLES.get(key);
+					WeakHashMap<TileManaInteractor, Double> otherDistanceCache = MANA_INTERACTABLES.get(key);
 					if (otherDistanceCache != null) {
 						otherDistanceCache.put(this, distance);
 					}
@@ -101,12 +108,13 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 		for (SuckRule suckRule : suckRules) {
 			if (getClass().isAssignableFrom(suckRule.thisClazz)) {
 
-				ArrayList<TileManaInteracter> interactables = new ArrayList<>(getNearestInteractables(suckRule.fromClazz));
+				ArrayList<TileManaInteractor> interactables = new ArrayList<>(getNearestInteractables(suckRule.fromClazz));
 				interactables.sort(Comparator.comparingDouble(this::getCachedDistanceSq));
 
 				int i = 0;
-				for (TileManaInteracter interacter : interactables) {
+				for (TileManaInteractor interacter : interactables) {
 					if (suckManaFrom(interacter, suckRule)) {
+						suckingCooldown = 10;
 						interacter.onDrainedFrom(this);
 						onSuckFrom(interacter);
 
@@ -125,11 +133,11 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 		return cap.getHandler();
 	}
 
-	public void onDrainedFrom(TileManaInteracter from) {
+	public void onDrainedFrom(TileManaInteractor from) {
 
 	}
 
-	public void onSuckFrom(TileManaInteracter from) {
+	public void onSuckFrom(TileManaInteractor from) {
 
 	}
 
@@ -146,13 +154,13 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 		this.allowOutsideSucking = allowOutsideSucking;
 	}
 
-	public double getCachedDistanceSq(TileManaInteracter interacter) {
-		WeakHashMap<TileManaInteracter, Double> map = MANA_INTERACTABLES.get(this);
+	public double getCachedDistanceSq(TileManaInteractor interacter) {
+		WeakHashMap<TileManaInteractor, Double> map = MANA_INTERACTABLES.get(this);
 		if (map == null) return Double.MAX_VALUE;
 		return map.getOrDefault(interacter, Double.MAX_VALUE);
 	}
 
-	public boolean suckManaFrom(TileManaInteracter interacterFrom, SuckRule suckRule) {
+	public boolean suckManaFrom(TileManaInteractor interacterFrom, SuckRule suckRule) {
 		if (getWizardryCap() == null || interacterFrom.getWizardryCap() == null) return false;
 
 		if (!isAllowOutsideSucking() && interacterFrom.isAllowOutsideSucking()) return false;
@@ -239,9 +247,9 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 		return amount;
 	}
 
-	public <T extends TileManaInteracter> Set<T> getNearestInteractables(Class<T> clazz) {
+	public <T extends TileManaInteractor> Set<T> getNearestInteractables(Class<T> clazz) {
 		Set<T> poses = new HashSet<>();
-		for (TileManaInteracter target : MANA_INTERACTABLES.keySet()) {
+		for (TileManaInteractor target : MANA_INTERACTABLES.keySet()) {
 			if (target == this) continue;
 			if (!world.isBlockLoaded(target.getPos())) continue;
 			if (getCachedDistanceSq(target) > ConfigValues.networkLinkDistance * ConfigValues.networkLinkDistance)
@@ -253,10 +261,10 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 		return poses;
 	}
 
-	public <T extends TileManaInteracter> Set<BlockPos> getNearestInteractablesPoses(Class<T> clazz) {
+	public <T extends TileManaInteractor> Set<BlockPos> getNearestInteractablesPoses(Class<T> clazz) {
 		Set<BlockPos> poses = new HashSet<>();
-		Set<TileManaInteracter> temp = new HashSet<>(MANA_INTERACTABLES.keySet());
-		for (TileManaInteracter target : temp) {
+		Set<TileManaInteractor> temp = new HashSet<>(MANA_INTERACTABLES.keySet());
+		for (TileManaInteractor target : temp) {
 			if (target == this) continue;
 			if (!world.isBlockLoaded(target.getPos())) continue;
 			if (getCachedDistanceSq(target) > ConfigValues.networkLinkDistance * ConfigValues.networkLinkDistance)
@@ -268,7 +276,7 @@ public class TileManaInteracter extends TileMod implements ITickable, IManaInter
 		return poses;
 	}
 
-	public static class SuckRule<K extends TileManaInteracter, T extends TileManaInteracter> {
+	public static class SuckRule<K extends TileManaInteractor, T extends TileManaInteractor> {
 
 		private final double idealAmount;
 		private final boolean equalize;

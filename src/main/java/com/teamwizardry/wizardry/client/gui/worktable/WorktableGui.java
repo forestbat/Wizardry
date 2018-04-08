@@ -18,7 +18,6 @@ import com.teamwizardry.librarianlib.features.network.PacketHandler;
 import com.teamwizardry.librarianlib.features.sprite.Sprite;
 import com.teamwizardry.librarianlib.features.sprite.Texture;
 import com.teamwizardry.wizardry.Wizardry;
-import com.teamwizardry.wizardry.api.spell.SpellBuilder;
 import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.module.Module;
 import com.teamwizardry.wizardry.api.spell.module.ModuleModifier;
@@ -26,7 +25,6 @@ import com.teamwizardry.wizardry.api.spell.module.ModuleRegistry;
 import com.teamwizardry.wizardry.api.spell.module.ModuleType;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.api.util.Utils;
-import com.teamwizardry.wizardry.common.network.PacketSendSpellToBook;
 import com.teamwizardry.wizardry.common.network.PacketWorktableUpdate;
 import com.teamwizardry.wizardry.common.tile.TileMagiciansWorktable;
 import com.teamwizardry.wizardry.init.ModBlocks;
@@ -52,7 +50,7 @@ import java.util.function.Function;
  */
 public class WorktableGui extends GuiBase {
 
-	private static final Texture BACKGROUND_TEXTURE = new Texture(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/table.png"));
+	private static final Texture BACKGROUND_TEXTURE = new Texture(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/table_background.png"));
 	private static final Sprite BACKGROUND_SPRITE = BACKGROUND_TEXTURE.getSprite("bg", 480, 224);
 	private static final Sprite SCROLL_BAR = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/scroll_bar.png"));
 	private static final Sprite SCROLL_BAR_GRIP = new Sprite(new ResourceLocation(Wizardry.MODID, "textures/gui/worktable/scroll_bar_bar.png"));
@@ -184,18 +182,15 @@ public class WorktableGui extends GuiBase {
 			List<List<Module>> compiledSpell = new ArrayList<>();
 
 			for (GuiComponent component : heads) {
-				ArrayList<Module> stream = new ArrayList<>();
-				compileModule(stream, component);
-
-				compiledSpell.add(stream);
+				ArrayList<Module> modules = new ArrayList<>();
+				compileModule(modules, component);
+				compiledSpell.add(modules);
 			}
-
-			SpellBuilder builder = new SpellBuilder(compiledSpell);
-
+			
 			for (ItemStack stack : Minecraft.getMinecraft().player.inventory.mainInventory) {
 				if (stack.getItem() == ModItems.BOOK) {
 					int slot = Minecraft.getMinecraft().player.inventory.getSlotFor(stack);
-					PacketHandler.NETWORK.sendToServer(new PacketSendSpellToBook(slot, builder.getSpell()));
+					//PacketHandler.NETWORK.sendToServer(new PacketSendSpellToBook(slot, compiledSpell));
 				}
 			}
 
@@ -339,19 +334,19 @@ public class WorktableGui extends GuiBase {
 		return paperComponents.inverse().get(uuid);
 	}
 
-	private void compileModule(ArrayList<Module> stream, @Nullable GuiComponent component) {
+	private void compileModule(ArrayList<Module> moduleList, @Nullable GuiComponent component) {
 		if (component == null) return;
 
 		Module module = getModule(component);
 		if (module == null) return;
 
-		stream.add(module);
+		moduleList.add(module);
 		for (Module modifier : ModuleRegistry.INSTANCE.getModules(ModuleType.MODIFIER)) {
 			if (!(modifier instanceof ModuleModifier)) continue;
 			if (component.hasData(Integer.class, modifier.getID())) {
 				int x = component.getData(Integer.class, modifier.getID());
 				for (int i = 0; i < x; i++) {
-					stream.add(modifier);
+					moduleList.add(modifier);
 				}
 			}
 		}
@@ -365,7 +360,7 @@ public class WorktableGui extends GuiBase {
 		Module child = getModule(childComp);
 		if (child == null) return;
 
-		compileModule(stream, childComp);
+		compileModule(moduleList, childComp);
 	}
 
 	private HashSet<GuiComponent> getHeads() {

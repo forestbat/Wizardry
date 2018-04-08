@@ -40,6 +40,8 @@ public class ModuleShapeTouch extends ModuleShape {
 
 	@Override
 	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		if (runRunOverrides(spell, spellRing)) return true;
+
 		Vec3d look = spell.getData(LOOK);
 
 		Entity caster = spell.getCaster();
@@ -58,7 +60,7 @@ public class ModuleShapeTouch extends ModuleShape {
 				.setIgnoreBlocksWithoutBoundingBoxes(false)
 				.trace();
 
-		spell.processBlock(result.getBlockPos(), result.sideHit, result.hitVec);
+		spell.processTrace(result);
 
 		return true;
 	}
@@ -66,6 +68,8 @@ public class ModuleShapeTouch extends ModuleShape {
 	@Override
 	@SideOnly(Side.CLIENT)
 	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		if (runRenderOverrides(spell, spellRing)) return;
+
 		Entity targetEntity = spell.getVictim();
 
 		if (targetEntity == null) return;

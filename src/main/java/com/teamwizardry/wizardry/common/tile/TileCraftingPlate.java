@@ -10,7 +10,7 @@ import com.teamwizardry.librarianlib.features.tesr.TileRenderer;
 import com.teamwizardry.librarianlib.features.utilities.client.ClientRunnable;
 import com.teamwizardry.wizardry.api.ConfigValues;
 import com.teamwizardry.wizardry.api.Constants;
-import com.teamwizardry.wizardry.api.block.TileManaInteracter;
+import com.teamwizardry.wizardry.api.block.TileManaInteractor;
 import com.teamwizardry.wizardry.api.capability.CapManager;
 import com.teamwizardry.wizardry.api.capability.IWizardryCapability;
 import com.teamwizardry.wizardry.api.capability.WizardryCapabilityProvider;
@@ -19,7 +19,6 @@ import com.teamwizardry.wizardry.api.item.IInfusable;
 import com.teamwizardry.wizardry.api.item.INacreProduct;
 import com.teamwizardry.wizardry.api.spell.SpellBuilder;
 import com.teamwizardry.wizardry.api.spell.SpellRing;
-import com.teamwizardry.wizardry.api.spell.SpellUtils;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.client.render.block.TileCraftingPlateRenderer;
 import com.teamwizardry.wizardry.common.block.BlockCraftingPlate;
@@ -55,9 +54,9 @@ import java.util.Random;
  */
 @TileRegister("crafting_plate")
 @TileRenderer(TileCraftingPlateRenderer.class)
-public class TileCraftingPlate extends TileManaInteracter {
+public class TileCraftingPlate extends TileManaInteractor {
 
-	public static final HashSet<BlockPos> poses = new HashSet<>();
+	private static final HashSet<BlockPos> poses = new HashSet<>();
 
 	static {
 		poses.add(new BlockPos(3, 2, 3));
@@ -89,13 +88,11 @@ public class TileCraftingPlate extends TileManaInteracter {
 	});
 
 	@Save
-	public boolean revealStructure = false, isAbleToSuckMana = false;
-	public Vec3d[] positions;
+	public boolean revealStructure = false;
 	public Random random = new Random(getPos().toLong());
 
 	public TileCraftingPlate() {
-		super(500, 500);
-		positions = new Vec3d[realInventory.getHandler().getSlots()];
+		super(0, 0);
 	}
 
 	@Override
@@ -111,7 +108,7 @@ public class TileCraftingPlate extends TileManaInteracter {
 	public IWizardryCapability getWizardryCap() {
 		if (!inputPearl.getHandler().getStackInSlot(0).isEmpty())
 			return WizardryCapabilityProvider.getCap(inputPearl.getHandler().getStackInSlot(0));
-		return super.getWizardryCap();
+		return null;
 	}
 
 	@Override
@@ -135,9 +132,9 @@ public class TileCraftingPlate extends TileManaInteracter {
 		}
 
 		for (EntityItem entityItem : world.getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(pos))) {
-			if (!inputPearl.getHandler().getStackInSlot(0).isEmpty()) break;
+			if (hasInputPearl()) break;
 
-			if (entityItem.getItem().getItem() instanceof IInfusable) {
+			if (!isInventoryEmpty() && entityItem.getItem().getItem() instanceof IInfusable) {
 
 				ItemStack stack = entityItem.getItem().copy();
 				stack.setCount(1);
@@ -145,7 +142,7 @@ public class TileCraftingPlate extends TileManaInteracter {
 
 				inputPearl.getHandler().setStackInSlot(0, stack);
 
-			} else {
+			} else if (!(entityItem.getItem().getItem() instanceof IInfusable)) {
 				ItemStack stack = entityItem.getItem().copy();
 				stack.setCount(1);
 				entityItem.getItem().shrink(1);
@@ -154,13 +151,12 @@ public class TileCraftingPlate extends TileManaInteracter {
 					if (realInventory.getHandler().getStackInSlot(i).isEmpty()) {
 						realInventory.getHandler().setStackInSlot(i, stack);
 
-						int finalI = i;
 						ClientRunnable.run(new ClientRunnable() {
 							@Override
 							@SideOnly(Side.CLIENT)
 							public void runIfClient() {
 								if (renderHandler != null)
-									((TileCraftingPlateRenderer) renderHandler).addAnimation(finalI, true, false);
+									((TileCraftingPlateRenderer) renderHandler).addAnimation();
 							}
 						});
 						break;
@@ -171,8 +167,8 @@ public class TileCraftingPlate extends TileManaInteracter {
 			markDirty();
 		}
 
-		if (!inputPearl.getHandler().getStackInSlot(0).isEmpty() && !realInventory.getHandler().getStackInSlot(0).isEmpty()) {
-			CapManager manager = new CapManager(inputPearl.getHandler().getStackInSlot(0));
+		if (hasInputPearl() && !isInventoryEmpty()) {
+			CapManager manager = new CapManager(getInputPearl());
 
 			if (manager.isManaFull()) {
 
@@ -184,18 +180,10 @@ public class TileCraftingPlate extends TileManaInteracter {
 						realInventory.getHandler().setStackInSlot(i, ItemStack.EMPTY);
 					}
 				}
-				SpellBuilder builder = new SpellBuilder(stacks, true);
-
+				
 				ItemStack infusedPearl = inputPearl.getHandler().getStackInSlot(0).copy();
 				inputPearl.getHandler().setStackInSlot(0, ItemStack.EMPTY);
 				outputPearl.getHandler().setStackInSlot(0, infusedPearl);
-
-
-				NBTTagList list = new NBTTagList();
-				for (SpellRing spellRing : builder.getSpell()) {
-					list.appendTag(spellRing.serializeNBT());
-				}
-				ItemNBTHelper.setList(infusedPearl, Constants.NBT.SPELL, list);
 
 				//Color lastColor = SpellUtils.getAverageSpellColor(builder.getSpell());
 				//float[] hsv = ColorUtils.getHSVFromColor(lastColor);
@@ -205,24 +193,34 @@ public class TileCraftingPlate extends TileManaInteracter {
 				ItemNBTHelper.setString(infusedPearl, "type", EnumPearlType.INFUSED.toString());
 
 				// Process spellData multipliers based on nacre quality
+				double pearlMultiplier = 1;
 				if (infusedPearl.getItem() instanceof INacreProduct) {
 					float purity = ((INacreProduct) infusedPearl.getItem()).getQuality(infusedPearl);
-					double multiplier;
-					if (purity >= 1f) multiplier = ConfigValues.perfectPearlMultiplier * purity;
+					if (purity >= 1f) pearlMultiplier = ConfigValues.perfectPearlMultiplier * purity;
 					else if (purity <= ConfigValues.damagedPearlMultiplier)
-						multiplier = ConfigValues.damagedPearlMultiplier;
+						pearlMultiplier = ConfigValues.damagedPearlMultiplier;
 					else {
 						double base = purity - 1;
-						multiplier = 1 - (base * base * base * base);
+						pearlMultiplier = 1 - (base * base * base * base);
 					}
-
-					for (SpellRing spellRing : SpellUtils.getAllSpellRings(infusedPearl))
-						spellRing.multiplyMultiplierForAll((float) multiplier);
 				}
-				for (int i = 0; i < positions.length; i++) {
-					positions[i] = Vec3d.ZERO;
-				}
+				
+				SpellBuilder builder = new SpellBuilder(stacks, pearlMultiplier);
 
+				NBTTagList list = new NBTTagList();
+				for (SpellRing spellRing : builder.getSpell()) {
+					list.appendTag(spellRing.serializeNBT());
+				}
+				ItemNBTHelper.setList(infusedPearl, Constants.NBT.SPELL, list);
+				
+				ClientRunnable.run(new ClientRunnable() {
+					@Override
+					@SideOnly(Side.CLIENT)
+					public void runIfClient() {
+						if (renderHandler != null)
+							((TileCraftingPlateRenderer) renderHandler).clearAll();
+					}
+				});
 
 				markDirty();
 
@@ -262,5 +260,25 @@ public class TileCraftingPlate extends TileManaInteracter {
 	@Override
 	public double getMaxRenderDistanceSquared() {
 		return 4096;
+	}
+
+	public ItemStack getInputPearl() {
+		return inputPearl.getHandler().getStackInSlot(0);
+	}
+
+	public boolean hasInputPearl() {
+		return !getInputPearl().isEmpty();
+	}
+
+	public ItemStack getOutputPearl() {
+		return outputPearl.getHandler().getStackInSlot(0);
+	}
+
+	public boolean hasOutputPearl() {
+		return !getOutputPearl().isEmpty();
+	}
+
+	public boolean isInventoryEmpty() {
+		return realInventory.getHandler().getStackInSlot(0).isEmpty();
 	}
 }

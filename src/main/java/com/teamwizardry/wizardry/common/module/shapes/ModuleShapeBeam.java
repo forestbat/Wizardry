@@ -45,7 +45,9 @@ public class ModuleShapeBeam extends ModuleShape implements IContinuousModule {
 	}
 
 	@Override
-	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) throws NullPointerException {
+	public boolean run(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		if (runRunOverrides(spell, spellRing)) return true;
+
 		World world = spell.world;
 		Vec3d look = spell.getData(LOOK);
 		Vec3d position = spell.getOrigin();
@@ -55,8 +57,7 @@ public class ModuleShapeBeam extends ModuleShape implements IContinuousModule {
 
 		double range = spellRing.getAttributeValue(AttributeRegistry.RANGE, spell);
 		double potency = 30 - spellRing.getAttributeValue(AttributeRegistry.POTENCY, spell);
-
-		spellRing.multiplyMultiplierForAll((float) (potency / 25.0 * range / 75.0));
+		if (potency < 1) potency = 1;
 
 		RayTraceResult trace = new RayTrace(world, look, position, range)
 				.setSkipEntity(caster)
@@ -79,6 +80,8 @@ public class ModuleShapeBeam extends ModuleShape implements IContinuousModule {
 	@Override
 	@SideOnly(Side.CLIENT)
 	public void render(@Nonnull SpellData spell, @Nonnull SpellRing spellRing) {
+		if (runRenderOverrides(spell, spellRing)) return;
+
 		World world = spell.world;
 		Vec3d target = spell.getTargetWithFallback();
 

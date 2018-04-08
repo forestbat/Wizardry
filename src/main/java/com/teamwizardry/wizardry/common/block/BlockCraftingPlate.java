@@ -9,6 +9,7 @@ import com.teamwizardry.wizardry.api.block.CachedStructure;
 import com.teamwizardry.wizardry.api.block.IStructure;
 import com.teamwizardry.wizardry.api.item.IInfusable;
 import com.teamwizardry.wizardry.api.spell.SpellBuilder;
+import com.teamwizardry.wizardry.api.spell.SpellRing;
 import com.teamwizardry.wizardry.api.spell.SpellUtils;
 import com.teamwizardry.wizardry.api.util.RandUtil;
 import com.teamwizardry.wizardry.client.render.block.TileCraftingPlateRenderer;
@@ -81,18 +82,23 @@ public class BlockCraftingPlate extends BlockModContainer implements IStructure 
 				if (heldItem.getItem() == ModItems.BOOK && playerIn.isCreative()) {
 					ItemStack pearl = new ItemStack(ModItems.PEARL_NACRE);
 
-					NBTTagList spellList = ItemNBTHelper.getList(heldItem, Constants.NBT.SPELL, net.minecraftforge.common.util.Constants.NBT.TAG_COMPOUND);
-					if (spellList == null) return false;
+					NBTTagList moduleList = ItemNBTHelper.getList(heldItem, Constants.NBT.SPELL, net.minecraftforge.common.util.Constants.NBT.TAG_STRING);
+					if (moduleList == null) return false;
 
-					SpellBuilder builder = new SpellBuilder(SpellUtils.getSpellChains(spellList), true, true);
+					SpellBuilder builder = new SpellBuilder(SpellUtils.getSpellItems(SpellUtils.deserializeModuleList(moduleList)));
 
+					NBTTagList list = new NBTTagList();
+					for (SpellRing spellRing : builder.getSpell()) {
+						list.appendTag(spellRing.serializeNBT());
+					}
+					ItemNBTHelper.setList(pearl, Constants.NBT.SPELL, list);
+					
 					//Color lastColor = SpellUtils.getAverageSpellColor(builder.getSpell());
 //
 					//float[] hsv = ColorUtils.getHSVFromColor(lastColor);
 					//ItemNBTHelper.setFloat(pearl, "hue", hsv[0]);
 					//ItemNBTHelper.setFloat(pearl, "saturation", hsv[1]);
 					ItemNBTHelper.setFloat(pearl, Constants.NBT.RAND, playerIn.world.rand.nextFloat());
-					ItemNBTHelper.setList(pearl, Constants.NBT.SPELL, spellList);
 
 					plate.outputPearl.getHandler().setStackInSlot(0, pearl);
 					plate.markDirty();
@@ -106,20 +112,19 @@ public class BlockCraftingPlate extends BlockModContainer implements IStructure 
 					stack.setCount(1);
 					heldItem.shrink(1);
 
-					if (stack.getItem() instanceof IInfusable) {
+					if (!plate.isInventoryEmpty() && stack.getItem() instanceof IInfusable) {
 						plate.inputPearl.getHandler().setStackInSlot(0, stack);
-					} else {
+					} else if (!(stack.getItem() instanceof IInfusable)) {
 						for (int i = 0; i < plate.realInventory.getHandler().getSlots(); i++) {
 							if (plate.realInventory.getHandler().getStackInSlot(i).isEmpty()) {
 								plate.realInventory.getHandler().setStackInSlot(i, stack);
 
-								int finalI = i;
 								ClientRunnable.run(new ClientRunnable() {
 									@Override
 									@SideOnly(Side.CLIENT)
 									public void runIfClient() {
 										if (plate.renderHandler != null)
-											((TileCraftingPlateRenderer) plate.renderHandler).addAnimation(finalI, true, false);
+											((TileCraftingPlateRenderer) plate.renderHandler).addAnimation();
 									}
 								});
 								break;
@@ -133,7 +138,7 @@ public class BlockCraftingPlate extends BlockModContainer implements IStructure 
 				}
 			} else {
 
-				if (!plate.outputPearl.getHandler().getStackInSlot(0).isEmpty()) {
+				if (plate.hasOutputPearl()) {
 					playerIn.setHeldItem(hand, plate.outputPearl.getHandler().extractItem(0, 1, false));
 					playerIn.openContainer.detectAndSendChanges();
 					worldIn.notifyBlockUpdate(pos, state, state, 3);
@@ -148,14 +153,20 @@ public class BlockCraftingPlate extends BlockModContainer implements IStructure 
 						}
 					}
 					if (!empty) {
-						for (int i = 0; i < plate.realInventory.getHandler().getSlots(); i++) {
+						for (int i = plate.realInventory.getHandler().getSlots() - 1; i >= 0; i--) {
 							ItemStack extracted = plate.realInventory.getHandler().getStackInSlot(i);
 							if (!extracted.isEmpty()) {
 								playerIn.addItemStackToInventory(plate.realInventory.getHandler().extractItem(i, extracted.getCount(), false));
-								worldIn.notifyBlockUpdate(pos, state, state, 3);
+								plate.markDirty();
 
-								plate.positions[i] = Vec3d.ZERO;
-
+								ClientRunnable.run(new ClientRunnable() {
+									@Override
+									@SideOnly(Side.CLIENT)
+									public void runIfClient() {
+										if (plate.renderHandler != null)
+											((TileCraftingPlateRenderer) plate.renderHandler).clearAll();
+									}
+								});
 								break;
 							}
 						}
